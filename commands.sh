@@ -27,7 +27,7 @@
     pip freeze > requirements.txt
 
 # Start Server
-    fastapi run main.py
+    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 # Run Tests
     pytest tests/ -v # Add --log-cli-level=INFO if want to see print and logs

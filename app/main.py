@@ -1,28 +1,31 @@
-# app/main.py
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from core.config import settings
-# from core.exceptions import ApplicationException
-from api.v1.routes import auth, posts, comments, users, categories, health
+from app.core.config import settings
+# from app.core.exceptions import ApplicationException
+from app.api.v1.routes import auth, posts, comments, users, categories, health
 
 # Lifespan events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup y shutdown events"""
+    """Startup and shutdown events"""
     # Startup
-    print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    print(f"Starting {settings.PROJECT_NAME} v{settings.APP_VERSION}")
     yield
     # Shutdown
     print("Shutting down...")
 
 # Create FastAPI app
 app = FastAPI(
-    title=settings.APP_NAME,
+    title=settings.PROJECT_NAME,
     version=settings.APP_VERSION,
-    lifespan=lifespan
+    description="A comprehensive RESTful API for managing blog posts, comments, users, and categories",
+    docs_url="/docs",
+    redoc_url="/redoc", 
+    openapi_url="/openapi.json", 
+    lifespan=lifespan,
 )
 
 # Middleware
