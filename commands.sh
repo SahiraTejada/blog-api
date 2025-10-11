@@ -8,7 +8,7 @@
     # For Linux / Mac OS
         source venv/bin/activate
     # Start ENV
-        .\venv\Scripts\Activate.ps1
+        venv\Scripts\Activate.ps1
 
 # Run Mypy
     mypy .
@@ -27,7 +27,7 @@
     pip freeze > requirements.txt
 
 # Start Server
-    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    uvicorn app.main:app --reload
 
 # Run Tests
     pytest tests/ -v # Add --log-cli-level=INFO if want to see print and logs

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(call venvScriptsactivate)",
+      "Bash(pip install:*)",
+      "Bash(venv/Scripts/python.exe -m pip install:*)",
+      "Bash(venv/Scripts/python.exe:*)",
+      "Read(//c/Users/sahir/Downloads/**)",
+      "Bash(curl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
