@@ -12,8 +12,8 @@ from app.core.config import settings
 
 # Lifespan events
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Startup and shutdown events"""
+async def lifespan(app: FastAPI):  # pylint: disable=redefined-outer-name
+    """Startup and shutdown events."""
     # Startup
     print(f"Starting {settings.PROJECT_NAME} v{settings.APP_VERSION}")
     yield
