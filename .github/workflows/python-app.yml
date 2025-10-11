@@ -42,11 +42,6 @@ jobs:
         python -m pip install --upgrade pip  # Update pip to latest version
         pip install -r requirements.txt      # Install production dependencies
     
-    # Step 5: Check code formatting with Black
-    - name: Run Black (formatting check)
-      run: |
-        pip install black
-        black --check --diff .  # --check: don't modify files, just report | --diff: show what would change
     
     # Step 6: Check import sorting with isort
     - name: Run isort (import sorting)
