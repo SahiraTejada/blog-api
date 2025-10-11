@@ -32,6 +32,23 @@ exclude_dirs = ["tests", "venv", ".venv"]  # Don't scan test files or virtual en
 skips = ["B101"]  # B101 = "assert used" - skip this check because asserts are safe in tests
 
 
+# ========== MYPY CONFIGURATION ==========
+# Mypy: Static type checker for Python
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Allow functions without type hints (can be enabled later)
+ignore_missing_imports = true  # Don't fail on missing stubs for third-party libraries
+
+# Pydantic plugin for better type checking
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "app.core.config"
+disable_error_code = ["call-arg"]  # Settings() gets args from .env file
+
+
 # ========== PYLINT CONFIGURATION ==========
 # Pylint: Source code analyzer that looks for programming errors and enforces coding standards
 [tool.pylint]
