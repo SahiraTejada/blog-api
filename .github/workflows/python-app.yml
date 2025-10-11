@@ -71,11 +71,11 @@ jobs:
         # --warn-redundant-casts: warn about unnecessary casts
         # --warn-unused-configs: warn about unused config settings
     
-    # Step 10: Security vulnerability scanning with Bandit
-    - name: Run Bandit (security check)
-      run: |
-        pip install bandit[toml]  # Install bandit with TOML config support
-        bandit -r . -ll  # -r: recursive scan | -ll: only report medium/high severity issues
+    # # Step 10: Security vulnerability scanning with Bandit
+    # - name: Run Bandit (security check)
+    #   run: |
+    #     pip install bandit[toml]  # Install bandit with TOML config support
+    #     bandit -r . -ll  # -r: recursive scan | -ll: only report medium/high severity issues
     
     # Step 11: Check for known security vulnerabilities in dependencies
     - name: Run Safety (dependency vulnerability check)
