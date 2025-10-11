@@ -5,7 +5,9 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api.v1.routes import api_router
+
 # from app.core.exceptions import ApplicationException
+
 
 # Lifespan events
 @asynccontextmanager
@@ -23,12 +25,12 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="A comprehensive RESTful API for managing blog posts, comments, users, and categories",
     docs_url="/docs",
-    redoc_url="/redoc", 
-    openapi_url="/openapi.json", 
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
     lifespan=lifespan,
-     swagger_ui_parameters={
-        "filter": True, 
-        }
+    swagger_ui_parameters={
+        "filter": True,
+    }
 )
 
 # Middleware
@@ -58,4 +60,5 @@ app.include_router(api_router, prefix="/api/v1")
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
