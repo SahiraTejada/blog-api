@@ -4,8 +4,8 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.core.config import settings
+from app.api.v1.routes import api_router
 # from app.core.exceptions import ApplicationException
-from app.api.v1.routes import auth, posts, comments, users, categories, health
 
 # Lifespan events
 @asynccontextmanager
@@ -26,6 +26,9 @@ app = FastAPI(
     redoc_url="/redoc", 
     openapi_url="/openapi.json", 
     lifespan=lifespan,
+     swagger_ui_parameters={
+        "filter": True, 
+        }
 )
 
 # Middleware
@@ -50,13 +53,8 @@ app.add_middleware(
 #         content={"detail": str(exc)}
 #     )
 
-# Routers
-app.include_router(health.router)
-# app.include_router(auth.router)
-# app.include_router(users.router)
-# app.include_router(posts.router)
-# app.include_router(comments.router)
-# app.include_router(categories.router)
+# Include API router
+app.include_router(api_router, prefix="/api/v1")
 
 if __name__ == "__main__":
     import uvicorn
