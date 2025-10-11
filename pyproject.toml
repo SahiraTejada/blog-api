@@ -13,7 +13,7 @@ include = '\.pyi?'
 # isort: Sorts and organizes import statements
 [tool.isort]
 profile = "black"  # Use Black-compatible import formatting (prevents conflicts between tools)
-# Match Black's line length so imports don't get reformatted differently
+line_length = 127  # Match Black's line length so imports don't get reformatted differently
 
 
 # ========== BANDIT CONFIGURATION ==========

@@ -1,5 +1,7 @@
-from fastapi import APIRouter, status
 from datetime import datetime
+
+from fastapi import APIRouter, status
+
 from app.core.config import settings
 
 router = APIRouter(prefix="/health", tags=["Health"])

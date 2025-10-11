@@ -1,10 +1,11 @@
-from fastapi import FastAPI, status
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-from app.core.config import settings
+
 from app.api.v1.routes import api_router
+from app.core.config import settings
 
 # from app.core.exceptions import ApplicationException
 
