@@ -51,15 +51,18 @@ good-names = [
 ]
 
 [tool.pylint.messages_control]
-disable = ["C0111"]  # C0111 = "missing-docstring" - don't require docstrings everywhere
-
-# Force failures for unused code (helps catch dead code and bugs)
-enable = [
-    "unused-variable",   # Fail if a variable is assigned but never read
-    "unused-argument",   # Fail if a function parameter is never used in the function body
-    "unused-import"      # Fail if an import statement is never used
+disable = [
+    "C0111",  # missing-docstring
+    "R0903",  # too-few-public-methods (common in config classes and Pydantic models)
 ]
 
-[tool.pylint.variables]
-unused-variable = "yes"  # Treat unused variables as errors, not warnings (makes CI fail)
+# Enable strict checks for unused code
+enable = [
+    "W0612",  # unused-variable - WILL fail on unused variables
+    "W0611",  # unused-import - WILL fail on unused imports
+]
+
+[tool.pylint.design]
+# Ignore unused arguments only in specific patterns (FastAPI dependencies, callbacks)
+dummy-variables-rgx = "^_|^app$|^request$|^response$"  # Allow: _, app, request, response as unused
 
