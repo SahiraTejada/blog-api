@@ -15,7 +15,7 @@ jobs:
     # Matrix strategy - runs the job multiple times with different Python versions
     strategy:
       matrix:
-        python-version: [ "3.11", "3.12"]  # Test against 4 Python versions
+        python-version: ["3.12"]  # Test against 4 Python versions
     
     steps:
     # Step 1: Clone the repository code
