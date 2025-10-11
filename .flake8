@@ -1,6 +1,5 @@
 [flake8]
 # Maximum line length allowed
-max-line-length = 127
 
 # Directories to exclude from checking
 exclude = .git,__pycache__,venv,env,.venv
