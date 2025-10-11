@@ -1,0 +1,58 @@
+# ========== BLACK CONFIGURATION ==========
+# Black: The uncompromising Python code formatter
+[tool.black]
+line-length = 127  # Max characters per line (default is 88, we use 127 to allow more code per line)
+
+target-version = ['py39', 'py310', 'py311', 'py312']  # Format code to be compatible with Python 3.9-3.12
+
+# Regex pattern: format .py files and .pyi stub files (the '?' makes 'i' optional)
+include = '\.pyi?'
+
+
+# ========== ISORT CONFIGURATION ==========
+# isort: Sorts and organizes import statements
+[tool.isort]
+profile = "black"  # Use Black-compatible import formatting (prevents conflicts between tools)
+# Match Black's line length so imports don't get reformatted differently
+line_length = 127  # Match Black's line length so imports don't get reformatted differently
+
+
+# ========== BANDIT CONFIGURATION ==========
+# Bandit: Security linter that finds common security issues in Python code
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv"]  # Don't scan test files or virtual environments
+
+skips = ["B101"]  # B101 = "assert used" - skip this check because asserts are safe in tests
+
+
+# ========== PYLINT CONFIGURATION ==========
+# Pylint: Source code analyzer that looks for programming errors and enforces coding standards
+[tool.pylint]
+max-line-length = 127  # Keep consistent with Black and Flake8
+
+[tool.pylint.basic]
+# Variables with these names won't trigger "name too short" warnings
+good-names = [
+    "i",    # Common loop counter
+    "j",    # Common nested loop counter  
+    "k",    # Common third-level loop counter
+    "ex",   # Common exception variable name
+    "Run",  # Common class name pattern
+    "_",    # Unused variable convention in Python
+    "id",   # Database identifier (short but clear)
+    "db"    # Database connection (short but clear)
+]
+
+[tool.pylint.messages_control]
+disable = ["C0111"]  # C0111 = "missing-docstring" - don't require docstrings everywhere
+
+# Force failures for unused code (helps catch dead code and bugs)
+enable = [
+    "unused-variable",   # Fail if a variable is assigned but never read
+    "unused-argument",   # Fail if a function parameter is never used in the function body
+    "unused-import"      # Fail if an import statement is never used
+]
+
+[tool.pylint.variables]
+unused-variable = "yes"  # Treat unused variables as errors, not warnings (makes CI fail)
+
