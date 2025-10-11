@@ -16,6 +16,14 @@ profile = "black"  # Use Black-compatible import formatting (prevents conflicts 
 line_length = 127  # Match Black's line length so imports don't get reformatted differently
 
 
+# ========== FLAKE8 CONFIGURATION ==========
+# Flake8: Style guide enforcement tool
+[tool.flake8]
+max-line-length = 127  # Match Black's line length
+extend-ignore = ["E203", "W503"]  # E203: whitespace before ':' (conflicts with Black), W503: line break before binary operator
+exclude = [".git", "__pycache__", "venv", ".venv", "build", "dist"]
+
+
 # ========== BANDIT CONFIGURATION ==========
 # Bandit: Security linter that finds common security issues in Python code
 [tool.bandit]

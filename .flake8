@@ -1,19 +1,13 @@
 [flake8]
-# Maximum line length allowed
-
-# Directories to exclude from checking
-exclude = .git,__pycache__,venv,env,.venv
-
-# Error codes to check for:
-# E: PEP 8 errors (style violations)
-# W: PEP 8 warnings
-# F: PyFlakes errors (undefined names, unused imports, etc.)
-# C: McCabe complexity
-# N: PEP 8 naming conventions
-# F841: Local variable assigned but never used (catches unused variables)
-select = E,W,F,C,N,F841
-
-# Error codes to ignore:
-# E203: Whitespace before ':' (conflicts with Black formatter)
-# W503: Line break before binary operator (outdated rule)
-ignore = E203,W503
+max-line-length = 127
+extend-ignore = E203, W503
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    build,
+    dist,
+    *.egg-info
+per-file-ignores =
+    __init__.py:F401
