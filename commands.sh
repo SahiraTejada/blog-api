@@ -1,14 +1,16 @@
 # Create ENV
     # For Linux / Mac OS
-        python3 -m venv venv
-    # Start ENV
-        python  -m venv venv
+        python3 -m venv .venv
+    # For Windows
+        python -m venv .venv
 
-# Start ENV
+# Activate ENV
     # For Linux / Mac OS
-        source venv/bin/activate
-    # Start ENV
-        venv\Scripts\Activate.ps1
+        source .venv/bin/activate
+    # For Windows PowerShell
+        .venv\Scripts\Activate.ps1
+    # For Windows CMD
+        .venv\Scripts\activate.bat
 
 # Run Mypy
     mypy .
