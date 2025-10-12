@@ -1,0 +1,85 @@
+# ========== BLACK CONFIGURATION ==========
+# Black: The uncompromising Python code formatter
+[tool.black]
+line-length = 127  # Max characters per line (default is 88, we use 127 to allow more code per line)
+
+target-version = ['py39', 'py310', 'py311', 'py312']  # Format code to be compatible with Python 3.9-3.12
+
+# Regex pattern: format .py files and .pyi stub files (the '?' makes 'i' optional)
+include = '\.pyi?'
+
+
+# ========== ISORT CONFIGURATION ==========
+# isort: Sorts and organizes import statements
+[tool.isort]
+profile = "black"  # Use Black-compatible import formatting (prevents conflicts between tools)
+line_length = 127  # Match Black's line length so imports don't get reformatted differently
+
+
+# ========== FLAKE8 CONFIGURATION ==========
+# Flake8: Style guide enforcement tool
+[tool.flake8]
+max-line-length = 127  # Match Black's line length
+extend-ignore = ["E203", "W503"]  # E203: whitespace before ':' (conflicts with Black), W503: line break before binary operator
+exclude = [".git", "__pycache__", "venv", ".venv", "build", "dist"]
+
+
+# ========== BANDIT CONFIGURATION ==========
+# Bandit: Security linter that finds common security issues in Python code
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv"]  # Don't scan test files or virtual environments
+
+skips = ["B101"]  # B101 = "assert used" - skip this check because asserts are safe in tests
+
+
+# ========== MYPY CONFIGURATION ==========
+# Mypy: Static type checker for Python
+[tool.mypy]
+python_version = "3.12"  # Support modern union syntax (X | Y)
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Allow functions without type hints (can be enabled later)
+ignore_missing_imports = true  # Don't fail on missing stubs for third-party libraries
+
+# Pydantic plugin for better type checking
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "app.core.config"
+disable_error_code = ["call-arg"]  # Settings() gets args from .env file
+
+
+# ========== PYLINT CONFIGURATION ==========
+# Pylint: Source code analyzer that looks for programming errors and enforces coding standards
+[tool.pylint]
+max-line-length = 127  # Keep consistent with Black and Flake8
+
+[tool.pylint.basic]
+# Variables with these names won't trigger "name too short" warnings
+good-names = [
+    "i",    # Common loop counter
+    "j",    # Common nested loop counter  
+    "k",    # Common third-level loop counter
+    "ex",   # Common exception variable name
+    "Run",  # Common class name pattern
+    "_",    # Unused variable convention in Python
+    "id",   # Database identifier (short but clear)
+    "db"    # Database connection (short but clear)
+]
+
+[tool.pylint.messages_control]
+disable = [
+    "C0111",  # missing-docstring
+    "R0903",  # too-few-public-methods (common in config classes and Pydantic models)
+]
+
+# Enable strict checks for unused code
+enable = [
+    "W0612",  # unused-variable - WILL fail on unused variables
+    "W0611",  # unused-import - WILL fail on unused imports
+]
+
+[tool.pylint.design]
+# Ignore unused arguments only in specific patterns (FastAPI dependencies, callbacks)
+dummy-variables-rgx = "^_|^app$|^request$|^response$"  # Allow: _, app, request, response as unused
+

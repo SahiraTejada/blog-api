@@ -1,14 +1,6 @@
 from fastapi import APIRouter
-from app.api.v1.routes import (
-    auth,
-    posts,
-    comments,
-    users,
-    categories,
-    health,
-    likes,
-    follow
-)
+
+from app.api.v1.routes import health
 
 # Create main API router
 api_router = APIRouter()

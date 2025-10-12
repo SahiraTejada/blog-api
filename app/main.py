@@ -1,17 +1,18 @@
-from fastapi import FastAPI, status
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-from app.core.config import settings
+
 from app.api.v1.routes import api_router
 from app.database import init_db, close_db, engine
 # from app.core.exceptions import ApplicationException
 
+
 # Lifespan events
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Startup and shutdown events"""
+async def lifespan(app: FastAPI):  # pylint: disable=redefined-outer-name,unused-argument
+    """Startup and shutdown events."""
     # Startup
     print(f"Starting {settings.PROJECT_NAME} v{settings.APP_VERSION}")
     print(f"Connecting to database...")
@@ -40,12 +41,12 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="A comprehensive RESTful API for managing blog posts, comments, users, and categories",
     docs_url="/docs",
-    redoc_url="/redoc", 
-    openapi_url="/openapi.json", 
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
     lifespan=lifespan,
-     swagger_ui_parameters={
-        "filter": True, 
-        }
+    swagger_ui_parameters={
+        "filter": True,
+    }
 )
 
 # Middleware
@@ -75,4 +76,5 @@ app.include_router(api_router, prefix="/api/v1")
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
