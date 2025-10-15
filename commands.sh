@@ -33,7 +33,13 @@
 
 # Run Tests
     pytest tests/ -v # Add --log-cli-level=INFO if want to see print and logs
-    
+
+# Sort Imports (fix automatically)
+    isort . --profile black --line-length 127
+
+# Check Import Sorting (validate only, exit with error if not sorted)
+    isort . --profile black --line-length 127 --check-only --diff
+
 # Run Migrations
     alembic revision --autogenerate -m "updates on database" &&
     alembic upgrade head

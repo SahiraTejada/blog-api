@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.v1.routes import api_router
-from app.database import init_db, close_db, engine
+from app.database import close_db, engine, init_db
+
 # from app.core.exceptions import ApplicationException
 
 

@@ -1,5 +1,7 @@
-from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
+
+from sqlalchemy.orm import Session, sessionmaker
+
 from app.database.connection import engine
 
 # ============================================================================
