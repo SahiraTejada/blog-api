@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 # By importing from app.models, we automatically import all models
 # that are exported in app/models/__init__.py
 import app.models  # noqa: F401 - imported for side effects (model registration)
-from alembic import context
+from alembic import context  # type: ignore[attr-defined]
 
 # ============================================================================
 # IMPORT YOUR MODELS HERE
