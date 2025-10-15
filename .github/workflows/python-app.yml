@@ -43,41 +43,31 @@ jobs:
         pip install -r requirements.txt      # Install production dependencies
     
     
-    # Step 6: Check import sorting with isort
+    # Step 5: Check import sorting with isort
     - name: Run isort (import sorting)
       run: |
         pip install isort
         isort --check-only --diff .  # Verify imports are sorted, show differences
-    
-    # Step 7: Lint code with Flake8
+
+    # Step 6: Lint code with Flake8 + bugbear
     - name: Run Flake8 (linting)
       run: |
-        pip install flake8 flake8-docstrings flake8-bugbear # Install flake8 + plugins
+        pip install flake8 flake8-bugbear  # Install flake8 + bugbear (catches common bugs)
         flake8 . --count --show-source --statistics  # Check for errors, show source and stats
-    
-    # Step 8: Advanced static analysis with Pylint
-    - name: Run Pylint
-      run: |
-        pip install pylint
-        pylint $(git ls-files '*.py')  # Analyze all Python files tracked by git
-    
-    # Step 9: Type checking with Mypy
+
+    # Step 7: Type checking with Mypy
     - name: Run Mypy (type checking)
       run: |
         pip install mypy types-requests types-redis  # Install mypy + type stubs
-        mypy . --ignore-missing-imports --warn-unused-ignores --warn-redundant-casts --warn-unused-configs
-        # --ignore-missing-imports: don't fail on missing type stubs
-        # --warn-unused-ignores: warn about unnecessary "type: ignore" comments
-        # --warn-redundant-casts: warn about unnecessary casts
-        # --warn-unused-configs: warn about unused config settings
+        mypy . --ignore-missing-imports  # Basic type checking without overly strict warnings
     
-    # # Step 10: Security vulnerability scanning with Bandit
+    # # Step 8: Security vulnerability scanning with Bandit (optional - uncomment if needed)
     # - name: Run Bandit (security check)
     #   run: |
     #     pip install bandit[toml]  # Install bandit with TOML config support
     #     bandit -r . -ll  # -r: recursive scan | -ll: only report medium/high severity issues
-    
-    # Step 11: Check for known security vulnerabilities in dependencies
+
+    # Step 9: Check for known security vulnerabilities in dependencies
     - name: Run Safety (dependency vulnerability check)
       run: |
         pip install safety

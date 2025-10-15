@@ -1,18 +1,19 @@
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 # IMPORTANT: Import ALL your models here so Alembic can detect them
 # This is necessary for autogenerate to work correctly
 # By importing from app.models, we automatically import all models
 # that are exported in app/models/__init__.py
-import app.models  # This imports all models defined in __init__.py
-from alembic import context
+import app.models  # noqa: F401 - imported for side effects (model registration)
 
 # ============================================================================
 # IMPORT YOUR MODELS HERE
 # ============================================================================
 # Import the Base from your database connection
+from app.core.config import settings
 from app.database.connection import Base
 
 # ============================================================================
@@ -23,7 +24,6 @@ from app.database.connection import Base
 config = context.config
 
 # Get DATABASE_URL from settings instead of alembic.ini
-from app.core.config import settings
 
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 

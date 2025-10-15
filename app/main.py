@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.v1.routes import api_router
+from app.core.config import settings
 from app.database import close_db, engine, init_db
 
 # from app.core.exceptions import ApplicationException
@@ -16,10 +17,10 @@ async def lifespan(app: FastAPI):  # pylint: disable=redefined-outer-name,unused
     """Startup and shutdown events."""
     # Startup
     print(f"Starting {settings.PROJECT_NAME} v{settings.APP_VERSION}")
-    print(f"Connecting to database...")
+    print("Connecting to database...")
     try:
         # Test database connection
-        with engine.connect() as conn:
+        with engine.connect():
             print("✓ Database connection successful")
         # Initialize database (create tables if needed)
         init_db()

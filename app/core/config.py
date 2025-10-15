@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     # Database
     DATABASE_URL: str
-    
+
     # JWT
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # CORS
     ALLOWED_ORIGINS: list[str] = ["*"]
-    
+
     class Config:
         env_file = ".env"
 
