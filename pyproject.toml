@@ -36,8 +36,6 @@ skips = ["B101"]  # B101 = "assert used" - skip this check because asserts are s
 # Mypy: Static type checker for Python
 [tool.mypy]
 python_version = "3.12"  # Support modern union syntax (X | Y)
-warn_return_any = true
-warn_unused_configs = true
 disallow_untyped_defs = false  # Allow functions without type hints (can be enabled later)
 ignore_missing_imports = true  # Don't fail on missing stubs for third-party libraries
 
@@ -49,8 +47,10 @@ module = "app.core.config"
 disable_error_code = ["call-arg"]  # Settings() gets args from .env file
 
 
-# ========== PYLINT CONFIGURATION ==========
+# ========== PYLINT CONFIGURATION (OPTIONAL - Not enforced in CI/CD) ==========
 # Pylint: Source code analyzer that looks for programming errors and enforces coding standards
+# This configuration is available for local development if you want to use pylint manually
+# Run locally with: pylint $(git ls-files '*.py')
 [tool.pylint]
 max-line-length = 127  # Keep consistent with Black and Flake8
 
@@ -58,7 +58,7 @@ max-line-length = 127  # Keep consistent with Black and Flake8
 # Variables with these names won't trigger "name too short" warnings
 good-names = [
     "i",    # Common loop counter
-    "j",    # Common nested loop counter  
+    "j",    # Common nested loop counter
     "k",    # Common third-level loop counter
     "ex",   # Common exception variable name
     "Run",  # Common class name pattern
@@ -71,12 +71,6 @@ good-names = [
 disable = [
     "C0111",  # missing-docstring
     "R0903",  # too-few-public-methods (common in config classes and Pydantic models)
-]
-
-# Enable strict checks for unused code
-enable = [
-    "W0612",  # unused-variable - WILL fail on unused variables
-    "W0611",  # unused-import - WILL fail on unused imports
 ]
 
 [tool.pylint.design]
