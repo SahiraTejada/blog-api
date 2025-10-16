@@ -3,7 +3,7 @@ from sqlalchemy import Column, String, Enum, ForeignKey, Text
 from app.models.base import BaseModel
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-
+from app.models.categories import post_categories
 
 class PostStatus(enum.Enum):
     DRAFT = "DRAFT"
@@ -21,6 +21,11 @@ class Post(BaseModel):
 
     # Relationships
     author = relationship("Users", back_populates="posts")
+    categories = relationship(
+            "Category",
+            secondary=post_categories,
+            back_populates="posts"
+    )
 
     def __repr__(self) -> str:
         """Return string representation of the model."""
