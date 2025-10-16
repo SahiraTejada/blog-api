@@ -21,6 +21,7 @@ class Post(BaseModel):
 
     # Relationships
     author = relationship("Users", back_populates="posts")
+    comments = relationship("Comments", back_populates="posts")
     categories = relationship(
             "Category",
             secondary=post_categories,

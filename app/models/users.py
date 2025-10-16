@@ -23,7 +23,8 @@ class Users(BaseModel):
 
     # Relationships
     posts = relationship("Post", back_populates="author")
-
+    comments = relationship("Comments", back_populates="author")
+    
     def __repr__(self) -> str:
         """Return string representation of the model."""
         return f"<{self.__class__.__name__}(email={self.email},username={self.username},role={self.role})>"
