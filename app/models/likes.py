@@ -1,15 +1,18 @@
-from sqlalchemy import Column,ForeignKey
-from app.models.base import BaseModel
+from sqlalchemy import Column,ForeignKey,DateTime
+from datetime import datetime, timezone
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
+from uuid import uuid4
 
 
-class Likes(BaseModel):
+class Likes():
 
     __tablename__ = "likes"
+    uuid = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)
 
     post_uuid = Column(UUID(as_uuid=True), ForeignKey("posts.uuid"), index=True, nullable=False)
     user_uuid = Column(UUID(as_uuid=True), ForeignKey("users.uuid"), index=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user = relationship("Users", back_populates="likes")
