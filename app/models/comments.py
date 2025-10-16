@@ -4,8 +4,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 
-
-
 class Comments(BaseModel):
 
     __tablename__ = "comments"
@@ -22,4 +20,4 @@ class Comments(BaseModel):
 
     def __repr__(self) -> str:
         """Return string representation of the model."""
-        return f"<{self.__class__.__name__}(post_uuid={self.post_uuid},content={self.status.content}>"
+        return f"<{self.__class__.__name__}(post_uuid={self.post_uuid},content={self.content}>"
