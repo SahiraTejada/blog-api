@@ -2,9 +2,10 @@ from sqlalchemy import Column,ForeignKey,DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime, timezone
+from app.database.connection import Base
 
 
-class Follows():
+class Follows(Base):
 
     __tablename__ = "follows"
 

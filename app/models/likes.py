@@ -3,9 +3,10 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from uuid import uuid4
+from app.database.connection import Base
 
 
-class Likes():
+class Likes(Base):
 
     __tablename__ = "likes"
     uuid = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)

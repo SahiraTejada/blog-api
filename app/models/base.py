@@ -12,7 +12,7 @@ class BaseModel(Base):
 
     __abstract__ = True
 
-    uuid = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)
+    uuid = Column(UUID(as_uuid=True), unique=True,primary_key=True, index=True, default=uuid4)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
