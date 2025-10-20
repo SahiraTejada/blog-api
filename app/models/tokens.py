@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, DateTime, Enum, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 import enum
 from app.database.connection import Base
@@ -21,7 +21,7 @@ class Token(Base):
 
     user_uuid = Column(
         UUID(as_uuid=True),
-        ForeignKey("users.user_uuid", ondelete="CASCADE"),
+        ForeignKey("users.uuid", ondelete="CASCADE"),
         nullable=False
     )
 
@@ -31,29 +31,29 @@ class Token(Base):
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     expires_at = Column(DateTime, nullable=False)
-    revoked = Column(DateTime, nullable=True)  
+    revoked = Column(DateTime, nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="tokens")
+    user = relationship("Users", back_populates="tokens")
 
     def __repr__(self):
         return f"<Token {self.token_uuid} - {self.type} - User: {self.user_uuid}>"
 
     @property
     def is_expired(self):
-        """Verifica si el token ha expirado"""
-        return datetime.utcnow() > self.expires_at
+        """Check if the token has expired"""
+        return datetime.now(timezone.utc) > self.expires_at
 
     @property
     def is_revoked(self):
-        """Verifica si el token ha sido revocado"""
+        """Check if the token has been revoked"""
         return self.revoked is not None
 
     @property
     def is_valid(self):
-        """Verifica si el token es válido (no expirado ni revocado)"""
+        """Check if the token is valid (not expired and not revoked)"""
         return not self.is_expired and not self.is_revoked
 
     def revoke(self):
-        """Revoca el token"""
-        self.revoked = datetime.utcnow()
+        """Revoke the token by setting the revoked timestamp"""
+        self.revoked = datetime.now(timezone.utc) 

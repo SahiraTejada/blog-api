@@ -1,4 +1,4 @@
-from sqlalchemy import Column,ForeignKey,DateTime
+from sqlalchemy import Column,ForeignKey,DateTime, UniqueConstraint
 from datetime import datetime, timezone
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -14,6 +14,10 @@ class Likes(Base):
     post_uuid = Column(UUID(as_uuid=True), ForeignKey("posts.uuid"), index=True, nullable=False)
     user_uuid = Column(UUID(as_uuid=True), ForeignKey("users.uuid"), index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('user_uuid', 'post_uuid', name='unique_user_post_like'),
+    )
 
     # Relationships
     user = relationship("Users", back_populates="likes")

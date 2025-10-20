@@ -22,7 +22,7 @@ class Post(BaseModel):
     # Relationships
     author = relationship("Users", back_populates="posts")
     comments = relationship("Comments", back_populates="posts")
-    likes = relationship("Likes", back_populates="likes")
+    likes = relationship("Likes", back_populates="posts")
 
     categories = relationship(
             "Category",

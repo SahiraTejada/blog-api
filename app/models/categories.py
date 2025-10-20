@@ -15,7 +15,7 @@ class Category(BaseModel):
 
     __tablename__ = "categories"
 
-    name = Column(String(255), nullable=False)
+    name = Column(String(255), unique=True, nullable=False)
     description = Column(Text, nullable=True)
     # Relationships
     posts = relationship(

@@ -25,6 +25,19 @@ class Users(BaseModel):
     posts = relationship("Post", back_populates="author")
     comments = relationship("Comments", back_populates="author")
     likes = relationship("Likes", back_populates="user")
+    tokens = relationship("Token", back_populates="user")
+
+    # Follow relationships
+    followers = relationship(
+        "Follows",
+        foreign_keys="Follows.followee_uuid",
+        back_populates="followee"
+    )
+    following = relationship(
+        "Follows",
+        foreign_keys="Follows.follower_uuid",
+        back_populates="follower"
+    )
 
     def __repr__(self) -> str:
         """Return string representation of the model."""

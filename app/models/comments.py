@@ -13,10 +13,18 @@ class Comments(BaseModel):
 
     content = Column(Text, nullable=False)
     parent_comment_uuid = Column(UUID(as_uuid=True), ForeignKey("comments.uuid"), index=True, nullable=True)
-    
+
     # Relationships
     author = relationship("Users", back_populates="comments")
     posts = relationship("Post", back_populates="comments")
+
+    # Self-referential relationship for nested comments
+    replies = relationship(
+        "Comments",
+        backref="parent",
+        remote_side="Comments.uuid",
+        foreign_keys=[parent_comment_uuid]
+    )
 
     def __repr__(self) -> str:
         """Return string representation of the model."""
