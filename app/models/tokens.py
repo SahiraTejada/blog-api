@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.connection import Base
 
@@ -20,17 +20,9 @@ class Token(Base):
     __tablename__ = "tokens"
 
     uuid = Column(UUID(as_uuid=True), unique=True, primary_key=True, index=True, default=uuid4)
-
-    user_uuid = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.uuid", ondelete="CASCADE"),
-        nullable=False
-    )
-
+    user_uuid = Column(UUID(as_uuid=True), ForeignKey("users.uuid", ondelete="CASCADE"), nullable=False)
     token = Column(String, unique=True, nullable=False, index=True)
-
-    type = Column(Enum(TokenType), nullable=False)
-
+    type: Mapped[TokenType] = mapped_column(Enum(TokenType))
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     revoked = Column(DateTime, nullable=True)

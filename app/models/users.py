@@ -1,7 +1,7 @@
 import enum
 
 from sqlalchemy import Column, Enum, String
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
 
@@ -21,7 +21,7 @@ class Users(BaseModel):
     last_name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(Enum(UserRole), default=UserRole.GUEST, nullable=False)
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.GUEST)
 
     # Relationships
     posts = relationship("Post", back_populates="author")
