@@ -1,7 +1,8 @@
-from sqlalchemy import Column,ForeignKey, Text
-from app.models.base import BaseModel
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+
+from app.models.base import BaseModel
 
 
 class Comments(BaseModel):

@@ -1,8 +1,10 @@
-from sqlalchemy import Column,ForeignKey,DateTime, UniqueConstraint
 from datetime import datetime, timezone
-from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
 from uuid import uuid4
+
+from sqlalchemy import Column, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+
 from app.database.connection import Base
 
 

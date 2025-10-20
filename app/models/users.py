@@ -1,7 +1,9 @@
 import enum
-from sqlalchemy import Column, String, Enum
-from app.models.base import BaseModel
+
+from sqlalchemy import Column, Enum, String
 from sqlalchemy.orm import relationship
+
+from app.models.base import BaseModel
 
 
 class UserRole(enum.Enum):

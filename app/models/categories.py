@@ -1,8 +1,8 @@
-from sqlalchemy import Column, String, Table, ForeignKey, Text
-from app.models.base import BaseModel
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, ForeignKey, String, Table, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
+from app.models.base import BaseModel
 
 post_categories = Table(
     'post_categories',
