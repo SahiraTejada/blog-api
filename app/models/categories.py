@@ -11,6 +11,7 @@ post_categories = Table(
     Column('category_uuid', UUID(as_uuid=True), ForeignKey('categories.uuid'), primary_key=True)
 )
 
+
 class Category(BaseModel):
 
     __tablename__ = "categories"

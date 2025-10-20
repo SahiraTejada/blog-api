@@ -19,7 +19,7 @@ class TokenType(str, enum.Enum):
 class Token(Base):
     __tablename__ = "tokens"
 
-    uuid = Column(UUID(as_uuid=True), unique=True,primary_key=True, index=True, default=uuid4)
+    uuid = Column(UUID(as_uuid=True), unique=True, primary_key=True, index=True, default=uuid4)
 
     user_uuid = Column(
         UUID(as_uuid=True),
@@ -58,4 +58,4 @@ class Token(Base):
 
     def revoke(self):
         """Revoke the token by setting the revoked timestamp"""
-        self.revoked = datetime.now(timezone.utc) 
+        self.revoked = datetime.now(timezone.utc)
