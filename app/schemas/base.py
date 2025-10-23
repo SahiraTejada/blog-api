@@ -1,29 +1,8 @@
-"""
-Base Schema Module
-
-This module provides base Pydantic models that are reused across the application.
-These schemas define common patterns for request/response models, reducing
-code duplication and ensuring consistency.
-
-Features:
-- Base models with common fields (UUID, timestamps)
-- Standard response formats (success, error)
-- Reusable validation patterns
-- Consistent serialization configuration
-
-Author: Blog API Team
-Date: 2025-10-20
-"""
-
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-
-# ============================================================================
-# TYPE VARIABLES
-# ============================================================================
 
 T = TypeVar("T")
 # Generic type variable for flexible response models
@@ -39,16 +18,10 @@ class BaseSchema(BaseModel):
 
     All schema classes should inherit from this to ensure consistent
     behavior across the application.
-
-    Configuration:
-    - from_attributes: Allows creating instances from ORM models
-    - populate_by_name: Allows field population by both alias and name
-    - json_schema_extra: Additional metadata for OpenAPI docs
     """
 
     model_config = ConfigDict(
         from_attributes=True,  # Enable ORM mode (was orm_mode in Pydantic v1)
-        populate_by_name=True,  # Allow using field names or aliases
         str_strip_whitespace=True,  # Strip whitespace from strings
         use_enum_values=True,  # Use enum values instead of enum objects
     )
@@ -60,18 +33,6 @@ class TimestampSchema(BaseSchema):
 
     Use this as a base for any model that includes creation/update timestamps.
     This is typically used for response models that mirror database models.
-
-    Attributes:
-        created_at: When the record was created
-        updated_at: When the record was last updated
-        deleted_at: When the record was soft-deleted (None if not deleted)
-
-    Example:
-        class UserResponse(TimestampSchema):
-            uuid: UUID
-            email: str
-            name: str
-            # Inherits created_at, updated_at, deleted_at
     """
 
     created_at: datetime = Field(
@@ -91,15 +52,6 @@ class UUIDSchema(BaseSchema):
     Schema with UUID primary key.
 
     Use this for response models that include a UUID identifier.
-
-    Attributes:
-        uuid: Unique identifier for the record
-
-    Example:
-        class CategoryResponse(UUIDSchema):
-            name: str
-            slug: str
-            # Inherits uuid
     """
 
     uuid: UUID = Field(
@@ -114,19 +66,6 @@ class BaseModelSchema(UUIDSchema, TimestampSchema):
     This combines UUIDSchema and TimestampSchema to provide all common
     fields that database models have. Use this as the base for most
     response models.
-
-    Attributes:
-        uuid: Unique identifier
-        created_at: Creation timestamp
-        updated_at: Last update timestamp
-        deleted_at: Soft delete timestamp
-
-    Example:
-        class PostResponse(BaseModelSchema):
-            title: str
-            content: str
-            author_id: UUID
-            # Inherits uuid, created_at, updated_at, deleted_at
     """
 
     model_config = ConfigDict(
@@ -473,7 +412,7 @@ class BulkOperationResponse(BaseSchema):
 # VALIDATION SCHEMAS
 # ============================================================================
 
-class IDListSchema(BaseSchema):
+class UUIDListSchema(BaseSchema):
     """
     Schema for requests with a list of IDs.
 
@@ -491,7 +430,7 @@ class IDListSchema(BaseSchema):
         }
     """
 
-    ids: List[UUID] = Field(
+    uuids: List[UUID] = Field(
         min_length=1,
         description="List of UUIDs (at least one required)"
     )
@@ -558,108 +497,3 @@ class StatusSchema(BaseSchema):
             }
         }
     )
-
-
-# ============================================================================
-# USAGE EXAMPLES
-# ============================================================================
-"""
-USAGE EXAMPLES IN YOUR MODELS:
-
-# 1. Creating a response model
-from app.schemas.base import ResponseSchema
-
-class UserResponse(ResponseSchema):
-    email: str
-    name: str
-    is_active: bool
-    # Automatically inherits: uuid, created_at, updated_at, deleted_at
-
-
-# 2. Creating a create schema
-from app.schemas.base import CreateSchema
-from pydantic import EmailStr
-
-class UserCreate(CreateSchema):
-    email: EmailStr
-    name: str
-    password: str
-    # No UUID or timestamps - those are generated
-
-
-# 3. Creating an update schema
-from app.schemas.base import UpdateSchema
-
-class UserUpdate(UpdateSchema):
-    email: Optional[EmailStr] = None
-    name: Optional[str] = None
-    # All fields optional for partial updates
-
-
-# 4. Using in FastAPI routes
-from fastapi import APIRouter, HTTPException
-from app.schemas.base import SuccessResponse, MessageResponse
-
-router = APIRouter()
-
-@router.delete("/users/{user_id}", response_model=SuccessResponse)
-def delete_user(user_id: UUID, db: Session = Depends(get_db)):
-    user_repo = UserRepository(db)
-    deleted = user_repo.delete(user_id)
-
-    if not deleted:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return SuccessResponse(
-        message="User deleted successfully",
-        data={"user_id": str(user_id)}
-    )
-
-
-@router.post("/users/bulk", response_model=BulkOperationResponse)
-def bulk_create_users(
-    users: List[UserCreate],
-    db: Session = Depends(get_db)
-):
-    user_repo = UserRepository(db)
-    succeeded = 0
-    failed = 0
-    errors = []
-
-    for user_data in users:
-        try:
-            user_repo.create(user_data.model_dump())
-            succeeded += 1
-        except Exception as e:
-            failed += 1
-            errors.append(ErrorDetail(
-                message=str(e),
-                code="CREATE_FAILED"
-            ))
-
-    return BulkOperationResponse(
-        success=failed == 0,
-        message=f"Created {succeeded} users",
-        total=len(users),
-        succeeded=succeeded,
-        failed=failed,
-        errors=errors if errors else None
-    )
-
-
-# 5. Custom error responses
-from fastapi import Request
-from fastapi.responses import JSONResponse
-from app.schemas.base import ErrorResponse, ErrorDetail
-
-@app.exception_handler(ValueError)
-async def value_error_handler(request: Request, exc: ValueError):
-    return JSONResponse(
-        status_code=400,
-        content=ErrorResponse(
-            message="Invalid input",
-            errors=[ErrorDetail(message=str(exc), code="INVALID_VALUE")],
-            status_code=400
-        ).model_dump()
-    )
-"""
