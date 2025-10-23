@@ -17,14 +17,17 @@ Benefits:
 from datetime import datetime, timezone
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, cast
 from uuid import UUID
+
 from fastapi import Request
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
+
 from app.models.base import BaseModel
+from app.schemas.base import PaginatedResponse, PaginationParams
+from app.utils.pagination import paginate
 
-
-# ============================================================================
+# ======================== , ====================================================
 # TYPE VARIABLES
 # ============================================================================
 # TypeVar allows us to create generic classes that work with any model type.
@@ -124,8 +127,6 @@ class BaseRepository(Generic[ModelType]):
 
     def get_multi(
         self,
-        skip: int = 0,
-        limit: int = 100,
         include_deleted: bool = False,
         filters: Optional[Dict[str, Any]] = None,
         order_by: Optional[str] = None,
@@ -177,8 +178,73 @@ class BaseRepository(Generic[ModelType]):
             else:
                 query = query.order_by(order_column.asc())
 
-        # Apply pagination
-        return query.offset(skip).limit(limit).all()
+        return query.all()
+
+    def get_multi_paginated(
+        self,
+        pagination: PaginationParams,
+        include_deleted: bool = False,
+        filters: Optional[Dict[str, Any]] = None,
+        order_by: Optional[str] = None,
+        order_desc: bool = False
+    ) -> PaginatedResponse[ModelType]:
+        """
+        Retrieve multiple records with automatic pagination using PaginationParams.
+
+        This method returns a paginated response with both the data and pagination
+        metadata. It uses the pagination utilities to automatically calculate
+        all pagination information.
+
+        Args:
+            pagination: PaginationParams object with page and page_size
+            include_deleted: If True, includes soft-deleted records. Default is False.
+            filters: Dictionary of field-value pairs to filter by.
+            order_by: Field name to sort by. Default is None (no specific ordering).
+            order_desc: If True, sorts in descending order. Default is False (ascending).
+
+        Returns:
+            PaginatedResponse containing:
+                - data: List of model instances for the current page
+                - pagination: PaginationMeta with page info
+
+        Example:
+            pagination_params = PaginationParams(page=1, page_size=20)
+            result = user_repository.get_multi_paginated(
+                pagination=pagination_params,
+                filters={"is_active": True},
+                order_by="created_at",
+                order_desc=True
+            )
+
+            # Access data
+            users = result.data
+
+            # Access pagination info
+            print(f"Page {result.pagination.page} of {result.pagination.total_pages}")
+            print(f"Total users: {result.pagination.total_items}")
+
+        Note:
+            This method automatically handles skip/limit calculation and
+            provides complete pagination metadata for the frontend.
+        """
+        # Get the items for the current page
+        items = self.get_multi(
+            skip=pagination.skip,
+            limit=pagination.limit,
+            include_deleted=include_deleted,
+            filters=filters,
+            order_by=order_by,
+            order_desc=order_desc
+        )
+
+        # Get total count with same filters
+        total_count = self.count(
+            include_deleted=include_deleted,
+            filters=filters
+        )
+
+        # Return paginated response
+        return paginate(items, pagination, total_count)
 
     def get_all(self, include_deleted: bool = False) -> List[ModelType]:
         """
@@ -773,6 +839,80 @@ class BaseRepository(Generic[ModelType]):
             query = query.filter(or_(*search_conditions))
 
         return query.offset(skip).limit(limit).all()
+
+    def search_paginated(
+        self,
+        search_fields: List[str],
+        search_term: str,
+        pagination: PaginationParams,
+        include_deleted: bool = False
+    ) -> PaginatedResponse[ModelType]:
+        """
+        Search for records with automatic pagination.
+
+        This method performs a case-insensitive partial match on text fields
+        and returns a paginated response with metadata.
+
+        Args:
+            search_fields: List of field names to search in
+            search_term: The text to search for
+            pagination: PaginationParams object with page and page_size
+            include_deleted: If True, includes soft-deleted records
+
+        Returns:
+            PaginatedResponse containing:
+                - data: List of matching model instances for current page
+                - pagination: PaginationMeta with page info
+
+        Example:
+            pagination_params = PaginationParams(page=1, page_size=20)
+            result = user_repository.search_paginated(
+                search_fields=["name", "email"],
+                search_term="john",
+                pagination=pagination_params
+            )
+
+            # Access data
+            matching_users = result.data
+
+            # Access pagination info
+            print(f"Found {result.pagination.total_items} matching users")
+            print(f"Showing page {result.pagination.page}")
+
+        Note:
+            This uses SQL ILIKE operator for case-insensitive pattern matching.
+            For large datasets, consider using full-text search.
+        """
+        # Get the items for the current page
+        items = self.search(
+            search_fields=search_fields,
+            search_term=search_term,
+            skip=pagination.skip,
+            limit=pagination.limit,
+            include_deleted=include_deleted
+        )
+
+        # Count total matching items
+        query = self.db.query(self.model)
+
+        if not include_deleted:
+            query = query.filter(self.model.deleted_at.is_(None))
+
+        # Build search conditions
+        search_conditions = []
+        for field in search_fields:
+            if hasattr(self.model, field):
+                search_conditions.append(
+                    getattr(self.model, field).ilike(f"%{search_term}%")
+                )
+
+        if search_conditions:
+            query = query.filter(or_(*search_conditions))
+
+        total_count = query.count()
+
+        # Return paginated response
+        return paginate(items, pagination, total_count)
 
     def get_or_create(
         self,

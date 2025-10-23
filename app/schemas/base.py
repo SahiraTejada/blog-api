@@ -574,6 +574,65 @@ class UUIDListSchema(BaseSchema):
     )
 
 
+class PaginatedResponse(BaseSchema, Generic[T]):
+    """
+    Generic paginated response wrapper.
+
+    Use this for endpoints that return paginated lists of items.
+    It provides both the data and pagination metadata in a consistent format.
+
+    Type Parameters:
+        T: The type of items in the data list
+
+    Attributes:
+        data: List of items for the current page
+        pagination: Pagination metadata
+
+    Example response:
+        {
+            "data": [
+                {"uuid": "...", "name": "Item 1"},
+                {"uuid": "...", "name": "Item 2"}
+            ],
+            "pagination": {
+                "page": 1,
+                "page_size": 20,
+                "total_items": 50,
+                "total_pages": 3,
+                "has_next": true,
+                "has_previous": false,
+                "next_page": 2,
+                "previous_page": null
+            }
+        }
+    """
+
+    data: List[T] = Field(
+        description="List of items for the current page"
+    )
+    pagination: PaginationMeta = Field(
+        description="Pagination metadata"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "data": [],
+                "pagination": {
+                    "page": 1,
+                    "page_size": 20,
+                    "total_items": 50,
+                    "total_pages": 3,
+                    "has_next": True,
+                    "has_previous": False,
+                    "next_page": 2,
+                    "previous_page": None
+                }
+            }
+        }
+    )
+
+
 class StatusSchema(BaseSchema):
     """
     Schema for status information.
