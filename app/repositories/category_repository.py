@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import func
@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.models import Category
 from app.repositories.base_repository import BaseRepository
+
+if TYPE_CHECKING:
+    from app.schemas.base import PaginatedResponse, PaginationParams
 
 
 class CategoryRepository(BaseRepository[Category]):
@@ -45,18 +48,19 @@ class CategoryRepository(BaseRepository[Category]):
 
     def get_popular_categories(
         self,
-        limit: int = 10,
         include_deleted: bool = False
     ) -> List[Category]:
         """
-        Get the most popular categories based on post count.
+        Get all categories ordered by popularity.
+
+        Returns ALL categories ordered by post count. For a limited number,
+        use pagination or slice the result.
 
         Args:
-            limit: Maximum number of categories to return
             include_deleted: If True, includes soft-deleted categories
 
         Returns:
-            List of category instances ordered by popularity
+            List of all category instances ordered by popularity
 
         Note:
             Currently orders by created_at. Will be updated to use post count
@@ -64,8 +68,6 @@ class CategoryRepository(BaseRepository[Category]):
         """
         # Usa get_multi heredado del BaseRepository
         return self.get_multi(
-            skip=0,
-            limit=limit,
             include_deleted=include_deleted,
             order_by="created_at",
             order_desc=True
@@ -73,28 +75,55 @@ class CategoryRepository(BaseRepository[Category]):
 
     def search_categories(
         self,
-        search_term: str,
-        skip: int = 0,
-        limit: int = 20
+        search_term: str
     ) -> List[Category]:
         """
-        Search categories by name or description.
+        Search all categories by name or description.
+
+        This returns ALL matching categories without pagination.
+        For paginated results, use search_categories_paginated().
 
         Args:
             search_term: Text to search for
-            skip: Number of records to skip (pagination)
-            limit: Maximum number of results
 
         Returns:
-            List of matching category instances
+            List of all matching category instances
+
+        Warning:
+            This method returns ALL matching records without pagination.
+            For paginated search, use search_categories_paginated() instead.
 
         """
         # Usa el método search heredado de BaseRepository
         return self.search(
             search_fields=["name", "description"],
+            search_term=search_term
+        )
+
+    def search_categories_paginated(
+        self,
+        search_term: str,
+        pagination: "PaginationParams"
+    ) -> "PaginatedResponse[Category]":
+        """
+        Search categories with pagination.
+
+        Args:
+            search_term: Text to search for
+            pagination: PaginationParams with page and page_size
+
+        Returns:
+            PaginatedResponse with matching categories and pagination metadata
+
+        Example:
+            from app.schemas.base import PaginationParams
+            pagination = PaginationParams(page=1, page_size=20)
+            result = category_repo.search_categories_paginated("tech", pagination)
+        """
+        return self.search_paginated(
+            search_fields=["name", "description"],
             search_term=search_term,
-            skip=skip,
-            limit=limit
+            pagination=pagination
         )
 
     def get_or_create_by_name(
@@ -122,51 +151,45 @@ class CategoryRepository(BaseRepository[Category]):
         new_category = self.create(obj_in)
         return new_category, True
 
-    def get_active_categories(
-        self,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[Category]:
+    def get_active_categories(self) -> List[Category]:
         """
-        Get all active (non-deleted) categories.
+        Get all active (non-deleted) categories ordered by name.
 
-        Args:
-            skip: Number of records to skip (pagination)
-            limit: Maximum number of categories to return
+        Returns ALL active categories without pagination.
+        For paginated results, use get_multi_paginated() from base repository.
 
         Returns:
-            List of active category instances
+            List of all active category instances ordered by name
 
         Example:
-            # Primera página
-            categories = category_repo.get_active_categories(skip=0, limit=20)
+            # Get all active categories
+            categories = category_repo.get_active_categories()
 
-            # Segunda página
-            categories = category_repo.get_active_categories(skip=20, limit=20)
+            # For pagination, use get_multi_paginated:
+            from app.schemas.base import PaginationParams
+            pagination = PaginationParams(page=1, page_size=20)
+            result = category_repo.get_multi_paginated(
+                pagination=pagination,
+                include_deleted=False,
+                order_by="name"
+            )
         """
         # Usa get_multi heredado con ordenamiento por nombre
         return self.get_multi(
-            skip=skip,
-            limit=limit,
             include_deleted=False,
             order_by="name",
             order_desc=False
         )
 
-    def get_categories_with_post_count(
-        self,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[Tuple[Category, int]]:
+    def get_categories_with_post_count(self) -> List[Tuple[Category, int]]:
         """
-        Get categories with their associated post counts.
+        Get all categories with their associated post counts.
 
-        Args:
-            skip: Number of records to skip (pagination)
-            limit: Maximum number of categories to return
+        Returns ALL categories with post counts. For pagination, use
+        get_multi_paginated() and then add post counts.
 
         Returns:
-            List of tuples (category, post_count)
+            List of tuples (category, post_count) for all categories
 
         Note:
             Currently returns 0 for post count. Will be implemented when
@@ -174,8 +197,6 @@ class CategoryRepository(BaseRepository[Category]):
         """
         # TODO: Implementar conteo real cuando exista el modelo Post
         categories = self.get_multi(
-            skip=skip,
-            limit=limit,
             include_deleted=False
         )
         return [(cat, 0) for cat in categories]

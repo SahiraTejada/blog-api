@@ -132,17 +132,17 @@ class BaseRepository(Generic[ModelType]):
         order_desc: bool = False
     ) -> List[ModelType]:
         """
-        Retrieve multiple records with pagination, filtering, and sorting.
+        Retrieve all records matching the criteria with filtering and sorting.
+
+        This method fetches all matching records without pagination. For paginated
+        results, use get_multi_paginated() instead.
 
         This is the main method for fetching collections of records. It supports:
-        - Pagination (skip/limit)
         - Soft delete filtering
         - Dynamic field filtering
         - Sorting
 
         Args:
-            skip: Number of records to skip (for pagination). Default is 0.
-            limit: Maximum number of records to return. Default is 100.
             include_deleted: If True, includes soft-deleted records. Default is False.
             filters: Dictionary of field-value pairs to filter by.
                     Example: {"email": "test@example.com", "is_active": True}
@@ -150,11 +150,24 @@ class BaseRepository(Generic[ModelType]):
             order_desc: If True, sorts in descending order. Default is False (ascending).
 
         Returns:
-            List of model instances matching the criteria
+            List of all model instances matching the criteria
 
-        Note:
-            The limit parameter prevents accidentally fetching huge datasets.
-            Adjust as needed for your use case.
+        Warning:
+            This method returns ALL matching records without pagination.
+            For large datasets, consider using get_multi_paginated() to avoid
+            memory issues and improve performance.
+
+        Examples:
+            # Get all active records
+            all_users = user_repo.get_multi(filters={"is_active": True})
+
+            # Get all records sorted by creation date
+            users = user_repo.get_multi(order_by="created_at", order_desc=True)
+
+            # For pagination, use get_multi_paginated instead:
+            from app.schemas.base import PaginationParams
+            pagination = PaginationParams(page=1, page_size=20)
+            paginated = user_repo.get_multi_paginated(pagination=pagination)
         """
         query = self.db.query(self.model)
 
@@ -226,19 +239,32 @@ class BaseRepository(Generic[ModelType]):
             This method automatically handles skip/limit calculation and
             provides complete pagination metadata for the frontend.
         """
-        # Get the items for the current page
-        items = self.get_multi(
-            include_deleted=include_deleted,
-            filters=filters,
-            order_by=order_by,
-            order_desc=order_desc
-        )
+        # Build query with filters and sorting
+        query = self.db.query(self.model)
 
-        # Get total count with same filters
-        total_count = self.count(
-            include_deleted=include_deleted,
-            filters=filters
-        )
+        # Apply soft delete filter
+        if not include_deleted:
+            query = query.filter(self.model.deleted_at.is_(None))
+
+        # Apply dynamic filters
+        if filters:
+            for field, value in filters.items():
+                if hasattr(self.model, field):
+                    query = query.filter(getattr(self.model, field) == value)
+
+        # Apply sorting
+        if order_by and hasattr(self.model, order_by):
+            order_column = getattr(self.model, order_by)
+            if order_desc:
+                query = query.order_by(order_column.desc())
+            else:
+                query = query.order_by(order_column.asc())
+
+        # Get total count before pagination
+        total_count = query.count()
+
+        # Apply pagination
+        items = query.offset(pagination.skip).limit(pagination.limit).all()
 
         # Return paginated response
         return paginate(items, pagination, total_count)
@@ -784,32 +810,40 @@ class BaseRepository(Generic[ModelType]):
         self,
         search_fields: List[str],
         search_term: str,
-        skip: int = 0,
-        limit: int = 100,
         include_deleted: bool = False
     ) -> List[ModelType]:
         """
-        Search for records where any of the specified fields contain the search term.
+        Search for all records where any of the specified fields contain the search term.
 
-        This performs a case-insensitive partial match on text fields.
-        Useful for implementing search functionality in your API.
+        This performs a case-insensitive partial match on text fields and returns
+        ALL matching records. For paginated search results, use search_paginated().
 
         Args:
             search_fields: List of field names to search in
             search_term: The text to search for
-            skip: Number of records to skip (pagination)
-            limit: Maximum number of records to return
             include_deleted: If True, includes soft-deleted records
 
         Returns:
-            List of model instances matching the search criteria
+            List of all model instances matching the search criteria
+
+        Warning:
+            This method returns ALL matching records without pagination.
+            For large result sets, use search_paginated() instead.
 
         Example:
-            # Search for users by name or email
+            # Search for all users by name or email
             results = user_repository.search(
                 search_fields=["name", "email"],
+                search_term="john"
+            )
+
+            # For paginated search:
+            from app.schemas.base import PaginationParams
+            pagination = PaginationParams(page=1, page_size=20)
+            paginated = user_repository.search_paginated(
+                search_fields=["name", "email"],
                 search_term="john",
-                limit=20
+                pagination=pagination
             )
 
         Note:
@@ -835,7 +869,7 @@ class BaseRepository(Generic[ModelType]):
             # Apply OR condition (match any of the fields)
             query = query.filter(or_(*search_conditions))
 
-        return query.offset(skip).limit(limit).all()
+        return query.all()
 
     def search_paginated(
         self,
@@ -880,16 +914,7 @@ class BaseRepository(Generic[ModelType]):
             This uses SQL ILIKE operator for case-insensitive pattern matching.
             For large datasets, consider using full-text search.
         """
-        # Get the items for the current page
-        items = self.search(
-            search_fields=search_fields,
-            search_term=search_term,
-            skip=pagination.skip,
-            limit=pagination.limit,
-            include_deleted=include_deleted
-        )
-
-        # Count total matching items
+        # Build query
         query = self.db.query(self.model)
 
         if not include_deleted:
@@ -906,7 +931,11 @@ class BaseRepository(Generic[ModelType]):
         if search_conditions:
             query = query.filter(or_(*search_conditions))
 
+        # Get total count before pagination
         total_count = query.count()
+
+        # Apply pagination and get items
+        items = query.offset(pagination.skip).limit(pagination.limit).all()
 
         # Return paginated response
         return paginate(items, pagination, total_count)
