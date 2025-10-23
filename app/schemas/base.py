@@ -80,6 +80,133 @@ class BaseModelSchema(UUIDSchema, TimestampSchema):
         }
     )
 
+class PaginationParams(BaseModel):
+    """
+    Standard pagination parameters for API endpoints.
+
+    This class defines the common query parameters used for pagination
+    across all endpoints. Use it with FastAPI's Depends() to automatically
+    validate and parse pagination parameters.
+
+    Attributes:
+        page: Current page number (1-indexed)
+        page_size: Number of items per page
+        skip: Number of items to skip (calculated automatically)
+
+    Example usage in FastAPI:
+        @router.get("/users")
+        def get_users(
+            pagination: PaginationParams = Depends(),
+            db: Session = Depends(get_db)
+        ):
+            users = user_repo.get_multi(
+                skip=pagination.skip,
+                limit=pagination.page_size
+            )
+            return paginate(users, pagination, total_count)
+    """
+
+    page: int = Field(
+        default=1,
+        ge=1,
+        description="Page number (1-indexed). Must be at least 1."
+    )
+    page_size: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        description="Number of items per page. Must be between 1 and 100."
+    )
+
+    @property
+    def skip(self) -> int:
+        """
+        Calculate the number of items to skip for the current page.
+
+        This converts page-based pagination to offset-based pagination
+        for database queries.
+
+        Returns:
+            Number of items to skip
+
+        Example:
+            page=1, page_size=20 -> skip=0
+            page=2, page_size=20 -> skip=20
+            page=3, page_size=20 -> skip=40
+        """
+        return (self.page - 1) * self.page_size
+
+    @property
+    def limit(self) -> int:
+        """
+        Get the page size (alias for consistency with repository methods).
+
+        Returns:
+            Number of items per page
+        """
+        return self.page_size
+
+    class Config:
+        """Pydantic model configuration."""
+        json_schema_extra = {
+            "example": {
+                "page": 1,
+                "page_size": 20
+            }
+        }
+
+
+class PaginationMeta(BaseModel):
+    """
+    Metadata about the paginated response.
+
+    This provides clients with all the information they need to:
+    - Display current page information
+    - Calculate total pages
+    - Navigate to other pages
+    - Show "showing X to Y of Z items"
+
+    Attributes:
+        page: Current page number
+        page_size: Items per page
+        total_items: Total number of items across all pages
+        total_pages: Total number of pages
+        has_next: Whether there is a next page
+        has_previous: Whether there is a previous page
+        next_page: Next page number (None if no next page)
+        previous_page: Previous page number (None if no previous page)
+    """
+
+    page: int = Field(description="Current page number (1-indexed)")
+    page_size: int = Field(description="Number of items per page")
+    total_items: int = Field(description="Total number of items")
+    total_pages: int = Field(description="Total number of pages")
+    has_next: bool = Field(description="Whether there is a next page")
+    has_previous: bool = Field(description="Whether there is a previous page")
+    next_page: Optional[int] = Field(
+        default=None,
+        description="Next page number (null if no next page)"
+    )
+    previous_page: Optional[int] = Field(
+        default=None,
+        description="Previous page number (null if no previous page)"
+    )
+
+    class Config:
+        """Pydantic model configuration."""
+        json_schema_extra = {
+            "example": {
+                "page": 2,
+                "page_size": 20,
+                "total_items": 150,
+                "total_pages": 8,
+                "has_next": True,
+                "has_previous": True,
+                "next_page": 3,
+                "previous_page": 1
+            }
+        }
+
 
 # ============================================================================
 # CRUD SCHEMAS
