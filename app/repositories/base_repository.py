@@ -89,7 +89,7 @@ class BaseRepository(Generic[ModelType]):
 
     def get(
         self,
-        id: Union[UUID, int, str],
+        uuid: UUID,
         include_deleted: bool = False
     ) -> Optional[ModelType]:
         """
@@ -113,11 +113,8 @@ class BaseRepository(Generic[ModelType]):
             else:
                 print("User not found")
 
-        Note:
-            This method does not raise an exception if the record is not found.
-            Check for None to handle missing records.
         """
-        query = self.db.query(self.model).filter(self.model.uuid == id)
+        query = self.db.query(self.model).filter(self.model.uuid == uuid)
 
         # Apply soft delete filter unless explicitly requested to include deleted
         if not include_deleted:
@@ -154,16 +151,6 @@ class BaseRepository(Generic[ModelType]):
 
         Returns:
             List of model instances matching the criteria
-
-        Example:
-            # Get first 10 active users, sorted by creation date
-            users = user_repository.get_multi(
-                skip=0,
-                limit=10,
-                filters={"is_active": True},
-                order_by="created_at",
-                order_desc=True
-            )
 
         Note:
             The limit parameter prevents accidentally fetching huge datasets.
@@ -256,7 +243,7 @@ class BaseRepository(Generic[ModelType]):
 
     def exists(
         self,
-        id: Union[UUID, int, str],
+        uuid: UUID,
         include_deleted: bool = False
     ) -> bool:
         """
@@ -278,7 +265,7 @@ class BaseRepository(Generic[ModelType]):
             else:
                 print("User not found")
         """
-        query = self.db.query(self.model.uuid).filter(self.model.uuid == id)
+        query = self.db.query(self.model.uuid).filter(self.model.uuid == uuid)
 
         if not include_deleted:
             query = query.filter(self.model.deleted_at.is_(None))
@@ -348,13 +335,6 @@ class BaseRepository(Generic[ModelType]):
                            (e.g., unique constraints, foreign key constraints)
             SQLAlchemyError: For other database errors
 
-        Example:
-            new_user = user_repository.create({
-                "email": "newuser@example.com",
-                "name": "New User",
-                "is_active": True
-            })
-            print(f"Created user with UUID: {new_user.uuid}")
 
         Note:
             - The method automatically commits the transaction
@@ -446,7 +426,7 @@ class BaseRepository(Generic[ModelType]):
 
     def update(
         self,
-        id: Union[UUID, int, str],
+        uuid: UUID,
         obj_in: Dict[str, Any]
     ) -> Optional[ModelType]:
         """
@@ -483,7 +463,7 @@ class BaseRepository(Generic[ModelType]):
             - Returns None if the record doesn't exist or is soft-deleted
         """
         # Fetch the existing record
-        db_obj = self.get(id)
+        db_obj = self.get(uuid)
 
         if not db_obj:
             return None
@@ -573,7 +553,7 @@ class BaseRepository(Generic[ModelType]):
 
     def delete(
         self,
-        id: Union[UUID, int, str],
+        uuid: UUID,
         hard_delete: bool = False
     ) -> bool:
         """
@@ -610,7 +590,7 @@ class BaseRepository(Generic[ModelType]):
         Note:
             Soft-deleted records can be restored using restore() method.
         """
-        db_obj = self.get(id)
+        db_obj = self.get(uuid)
 
         if not db_obj:
             return False
@@ -690,7 +670,7 @@ class BaseRepository(Generic[ModelType]):
             self.db.rollback()
             raise e
 
-    def restore(self, id: Union[UUID, int, str]) -> bool:
+    def restore(self, uuid: UUID) -> bool:
         """
         Restore a soft-deleted record.
 
@@ -718,7 +698,7 @@ class BaseRepository(Generic[ModelType]):
             cannot be restored.
         """
         # Look for the record including deleted ones
-        db_obj = self.get(id, include_deleted=True)
+        db_obj = self.get(uuid, include_deleted=True)
 
         if not db_obj or db_obj.deleted_at is None:
             return False
