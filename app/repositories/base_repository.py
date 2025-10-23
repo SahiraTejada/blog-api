@@ -17,18 +17,12 @@ Benefits:
 from datetime import datetime, timezone
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, cast
 from uuid import UUID
-
 from fastapi import Request
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
-
 from app.models.base import BaseModel
-from app.utils.paginaiton import (  # type: ignore[attr-defined]
-    PaginatedResponse,
-    PaginationParams,
-    paginate,
-)
+
 
 # ============================================================================
 # TYPE VARIABLES
@@ -976,169 +970,6 @@ class BaseRepository(Generic[ModelType]):
         """
         self.db.expunge(db_obj)
         return db_obj
-
-    # ========================================================================
-    # PAGINATION OPERATIONS
-    # ========================================================================
-
-    def get_paginated(
-        self,
-        pagination: PaginationParams,
-        request: Optional[Request] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        order_by: Optional[str] = None,
-        order_desc: bool = False,
-        include_deleted: bool = False,
-        query_params: Optional[Dict[str, Any]] = None
-    ) -> PaginatedResponse[ModelType]:
-        """
-        Get paginated results with automatic count query.
-
-        This is a convenience method that combines get_multi() and count()
-        to provide a complete paginated response with metadata and links.
-
-        Args:
-            pagination: Pagination parameters (page, page_size)
-            request: Optional FastAPI Request for generating navigation links
-            filters: Optional filters to apply to the query
-            order_by: Optional field name to sort by
-            order_desc: If True, sorts in descending order
-            include_deleted: If True, includes soft-deleted records
-            query_params: Optional additional query parameters to preserve in links
-
-        Returns:
-            PaginatedResponse with data, metadata, and optional navigation links
-
-        Example:
-            # In a FastAPI route
-            @router.get("/categories", response_model=PaginatedResponse[CategoryResponse])
-            def get_categories(
-                request: Request,
-                pagination: PaginationParams = Depends(get_pagination_params),
-                db: Session = Depends(get_db)
-            ):
-                category_repo = CategoryRepository(db)
-                return category_repo.get_paginated(
-                    pagination=pagination,
-                    request=request,
-                    order_by="name",
-                    order_desc=False
-                )
-
-        Note:
-            This executes two queries: one for data and one for total count.
-            For better performance with large datasets, consider caching the count.
-        """
-        # Get paginated items
-        items = self.get_multi(
-            skip=pagination.skip,
-            limit=pagination.limit,
-            include_deleted=include_deleted,
-            filters=filters,
-            order_by=order_by,
-            order_desc=order_desc
-        )
-
-        # Get total count with same filters
-        total = self.count(
-            include_deleted=include_deleted,
-            filters=filters
-        )
-
-        # Return paginated response
-        return paginate(
-            items=items,
-            pagination=pagination,
-            total_items=total,
-            request=request,
-            query_params=query_params
-        )
-
-    def search_paginated(
-        self,
-        search_fields: List[str],
-        search_term: str,
-        pagination: PaginationParams,
-        request: Optional[Request] = None,
-        include_deleted: bool = False,
-        query_params: Optional[Dict[str, Any]] = None
-    ) -> PaginatedResponse[ModelType]:
-        """
-        Search records with pagination.
-
-        This combines the search() method with pagination utilities to provide
-        a complete paginated search response.
-
-        Args:
-            search_fields: List of field names to search in
-            search_term: The text to search for
-            pagination: Pagination parameters (page, page_size)
-            request: Optional FastAPI Request for generating navigation links
-            include_deleted: If True, includes soft-deleted records
-            query_params: Optional additional query parameters to preserve in links
-
-        Returns:
-            PaginatedResponse with search results, metadata, and links
-
-        Example:
-            # In a FastAPI route
-            @router.get("/posts/search", response_model=PaginatedResponse[PostResponse])
-            def search_posts(
-                request: Request,
-                q: str = Query(..., description="Search query"),
-                pagination: PaginationParams = Depends(get_pagination_params),
-                db: Session = Depends(get_db)
-            ):
-                post_repo = PostRepository(db)
-                return post_repo.search_paginated(
-                    search_fields=["title", "content"],
-                    search_term=q,
-                    pagination=pagination,
-                    request=request,
-                    query_params={"q": q}
-                )
-
-        Note:
-            For large datasets, consider implementing full-text search
-            using database-specific features or external search engines.
-        """
-        # Get search results
-        items = self.search(
-            search_fields=search_fields,
-            search_term=search_term,
-            skip=pagination.skip,
-            limit=pagination.limit,
-            include_deleted=include_deleted
-        )
-
-        # Count total matching results
-        # We need to build a similar query for counting
-        query = self.db.query(func.count(self.model.uuid))
-
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
-
-        # Apply search conditions
-        search_conditions = []
-        for field in search_fields:
-            if hasattr(self.model, field):
-                search_conditions.append(
-                    getattr(self.model, field).ilike(f"%{search_term}%")
-                )
-
-        if search_conditions:
-            query = query.filter(or_(*search_conditions))
-
-        total = query.scalar() or 0
-
-        # Return paginated response
-        return paginate(
-            items=items,
-            pagination=pagination,
-            total_items=total,
-            request=request,
-            query_params=query_params
-        )
 
     def __repr__(self) -> str:
         """
