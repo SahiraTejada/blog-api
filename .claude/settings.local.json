@@ -8,7 +8,8 @@
       "Read(//c/Users/sahir/Downloads/**)",
       "Bash(curl:*)",
       "Bash(python -m flake8:*)",
-      "Bash(python -c:*)"
+      "Bash(python -c:*)",
+      "Bash(python -m isort:*)"
     ],
     "deny": [],
     "ask": []

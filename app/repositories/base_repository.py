@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.models.base import BaseModel
 from app.schemas.base import PaginationParams
-from app.utils.pagination import paginate, PaginatedResponse
+from app.utils.pagination import PaginatedResponse, paginate
 
 # ======================== , ====================================================
 # TYPE VARIABLES
