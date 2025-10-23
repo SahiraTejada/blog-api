@@ -19,7 +19,6 @@ class CategoryRepository(BaseRepository[Category]):
     def __init__(self, db: Session):
         super().__init__(Category, db)
 
-
     def get_by_name(
         self,
         name: str,
@@ -43,7 +42,6 @@ class CategoryRepository(BaseRepository[Category]):
             query = query.filter(self.model.deleted_at.is_(None))
 
         return query.first()
-
 
     def get_popular_categories(
         self,
@@ -289,4 +287,3 @@ class CategoryRepository(BaseRepository[Category]):
             query = query.filter(self.model.uuid != exclude_id)
 
         return query.first() is not None
-
