@@ -15,7 +15,7 @@ Benefits:
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, cast
 from uuid import UUID
 
 from sqlalchemy import func, or_
@@ -534,10 +534,10 @@ class BaseRepository(Generic[ModelType]):
             query = query.filter(self.model.deleted_at.is_(None))
 
             # Add updated_at timestamp
-            obj_in["updated_at"] = datetime.now(timezone.utc)
+            update_values = {**obj_in, "updated_at": datetime.now(timezone.utc)}
 
             # Perform the bulk update
-            count = query.update(obj_in, synchronize_session=False)
+            count = query.update(update_values, synchronize_session=False)  # type: ignore[arg-type]
 
             self.db.commit()
 
@@ -601,7 +601,7 @@ class BaseRepository(Generic[ModelType]):
                 self.db.delete(db_obj)
             else:
                 # Soft delete: just set the deleted_at timestamp
-                db_obj.deleted_at = datetime.now(timezone.utc)
+                setattr(db_obj, 'deleted_at', datetime.now(timezone.utc))
 
             self.db.commit()
             return True
@@ -705,7 +705,7 @@ class BaseRepository(Generic[ModelType]):
 
         try:
             # Clear the deleted_at timestamp
-            db_obj.deleted_at = None
+            setattr(db_obj, 'deleted_at', None)
             self.db.commit()
             return True
 
@@ -897,7 +897,8 @@ class BaseRepository(Generic[ModelType]):
 
                 if existing:
                     # Update existing record
-                    updated = self.update(existing[0].uuid, obj_data)
+                    existing_uuid = cast(UUID, existing[0].uuid)
+                    updated = self.update(existing_uuid, obj_data)
                     if updated:
                         instances.append(updated)
                         updated_count += 1
