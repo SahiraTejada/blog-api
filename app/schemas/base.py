@@ -80,6 +80,7 @@ class BaseModelSchema(UUIDSchema, TimestampSchema):
         }
     )
 
+
 class PaginationParams(BaseModel):
     """
     Standard pagination parameters for API endpoints.

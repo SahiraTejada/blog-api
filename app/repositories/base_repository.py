@@ -18,7 +18,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, cast
 from uuid import UUID
 
-from fastapi import Request
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
