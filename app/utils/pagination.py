@@ -5,6 +5,9 @@ from app.schemas.base import PaginatedResponse, PaginationMeta, PaginationParams
 
 T = TypeVar("T")
 
+# Re-export for convenience
+__all__ = ["paginate", "create_pagination_meta", "PaginatedResponse"]
+
 
 def paginate(
     items: List[T],

@@ -23,8 +23,8 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.base import BaseModel
-from app.schemas.base import PaginatedResponse, PaginationParams
-from app.utils.pagination import paginate
+from app.schemas.base import PaginationParams
+from app.utils.pagination import paginate, PaginatedResponse
 
 # ======================== , ====================================================
 # TYPE VARIABLES
@@ -186,7 +186,7 @@ class BaseRepository(Generic[ModelType]):
         filters: Optional[Dict[str, Any]] = None,
         order_by: Optional[str] = None,
         order_desc: bool = False
-    ) -> PaginatedResponse[ModelType]:
+    ) -> PaginatedResponse[Any]:
         """
         Retrieve multiple records with automatic pagination using PaginationParams.
 
@@ -228,8 +228,6 @@ class BaseRepository(Generic[ModelType]):
         """
         # Get the items for the current page
         items = self.get_multi(
-            skip=pagination.skip,
-            limit=pagination.limit,
             include_deleted=include_deleted,
             filters=filters,
             order_by=order_by,
@@ -845,7 +843,7 @@ class BaseRepository(Generic[ModelType]):
         search_term: str,
         pagination: PaginationParams,
         include_deleted: bool = False
-    ) -> PaginatedResponse[ModelType]:
+    ) -> PaginatedResponse[Any]:
         """
         Search for records with automatic pagination.
 

@@ -149,6 +149,7 @@ class PaginationParams(BaseModel):
 
     class Config:
         """Pydantic model configuration."""
+
         json_schema_extra = {
             "example": {
                 "page": 1,
@@ -195,6 +196,7 @@ class PaginationMeta(BaseModel):
 
     class Config:
         """Pydantic model configuration."""
+
         json_schema_extra = {
             "example": {
                 "page": 2,
