@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import func
@@ -6,9 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Category
 from app.repositories.base_repository import BaseRepository
-
-if TYPE_CHECKING:
-    from app.schemas.base import PaginatedResponse, PaginationParams
+from app.schemas.base import PaginatedResponse, PaginationParams
 
 
 class CategoryRepository(BaseRepository[Category]):
@@ -94,7 +92,6 @@ class CategoryRepository(BaseRepository[Category]):
             For paginated search, use search_categories_paginated() instead.
 
         """
-        # Usa el método search heredado de BaseRepository
         return self.search(
             search_fields=["name", "description"],
             search_term=search_term
@@ -210,13 +207,6 @@ class CategoryRepository(BaseRepository[Category]):
 
         Returns:
             List of created category instances
-
-        Example:
-            default_categories = [
-                "Technology", "Sports", "Politics",
-                "Entertainment", "Science", "Health"
-            ]
-            created = category_repo.bulk_create_categories(default_categories)
         """
         categories_to_create = []
 
@@ -226,11 +216,8 @@ class CategoryRepository(BaseRepository[Category]):
             if not existing:
                 categories_to_create.append({
                     "name": name,
-                    # TODO: Agregar generación de slug
-                    # "slug": generate_slug(name),
                 })
 
-        # Usa create_multi heredado de BaseRepository
         if categories_to_create:
             return self.create_multi(categories_to_create)
 
@@ -242,9 +229,8 @@ class CategoryRepository(BaseRepository[Category]):
 
     def update_category_name(
         self,
-        category_id: UUID,
+        category_uuid: UUID,
         new_name: str,
-        update_slug: bool = True
     ) -> Optional[Category]:
         """
         Update a category's name and optionally regenerate its slug.
@@ -252,25 +238,15 @@ class CategoryRepository(BaseRepository[Category]):
         Args:
             category_id: UUID of the category to update
             new_name: The new name for the category
-            update_slug: If True, regenerates the slug from the new name
 
         Returns:
             Updated category instance, or None if not found
 
-        Example:
-            updated = category_repo.update_category_name(
-                category_id=cat_uuid,
-                new_name="Web Development"
-            )
+
         """
         update_data = {"name": new_name}
 
-        # TODO: Agregar generación de slug cuando esté implementado
-        # if update_slug:
-        #     update_data["slug"] = generate_slug(new_name)
-
-        # Usa el método update heredado de BaseRepository
-        return self.update(category_id, update_data)
+        return self.update(category_uuid, update_data)
 
     # ========================================================================
     # VALIDATION METHODS
@@ -290,15 +266,6 @@ class CategoryRepository(BaseRepository[Category]):
 
         Returns:
             True if the name exists, False otherwise
-
-        Example:
-            # Verificar antes de crear
-            if category_repo.name_exists("Technology"):
-                print("Nombre de categoría ya existe")
-
-            # Verificar antes de actualizar (excluir categoría actual)
-            if category_repo.name_exists("Technology", exclude_id=current_cat_id):
-                print("Otra categoría ya tiene este nombre")
         """
         query = self.db.query(self.model.uuid).filter(
             func.lower(self.model.name) == name.lower()
