@@ -4,11 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
+from app.api.middleware.error_handler import register_exception_handlers
 from app.api.v1.routes import api_router
 from app.core.config import settings
 from app.database import close_db, engine, init_db
-
-# from app.core.exceptions import ApplicationException
 
 
 # Lifespan events
@@ -65,13 +64,8 @@ app.add_middleware(
     allowed_hosts=settings.ALLOWED_ORIGINS
 )
 
-# Exception handlers
-# @app.exception_handler(ApplicationException)
-# async def application_exception_handler(request, exc):
-#     return JSONResponse(
-#         status_code=status.HTTP_400_BAD_REQUEST,
-#         content={"detail": str(exc)}
-#     )
+# Register exception handlers
+register_exception_handlers(app)
 
 # Include API router
 app.include_router(api_router, prefix="/api/v1")
