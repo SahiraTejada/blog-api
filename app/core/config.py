@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str
 
+    DEBUG: bool = True
     # JWT
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
