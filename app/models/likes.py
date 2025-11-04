@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 from app.database.connection import Base
 
 
-class Likes(Base):
+class Like(Base):
 
     __tablename__ = "likes"
     uuid = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)

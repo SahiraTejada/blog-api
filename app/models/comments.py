@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
 
 
-class Comments(BaseModel):
+class Comment(BaseModel):
 
     __tablename__ = "comments"
 
