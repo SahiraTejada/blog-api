@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models import Category
+from app.models import Category, Post
 from app.repositories.base_repository import BaseRepository
 from app.schemas.base import PaginatedResponse, PaginationParams
 
@@ -18,7 +18,12 @@ class CategoryRepository(BaseRepository[Category]):
     """
 
     def __init__(self, db: Session):
+        """Initialize CategoryRepository with Category model."""
         super().__init__(Category, db)
+
+    # ========================================================================
+    # CATEGORY-SPECIFIC READ METHODS
+    # ========================================================================
 
     def get_by_name(
         self,
@@ -34,6 +39,9 @@ class CategoryRepository(BaseRepository[Category]):
 
         Returns:
             The category instance if found, None otherwise
+
+        Example:
+            category = category_repo.get_by_name("Technology")
         """
         query = self.db.query(self.model).filter(
             func.lower(self.model.name) == name.lower()
@@ -44,181 +52,213 @@ class CategoryRepository(BaseRepository[Category]):
 
         return query.first()
 
-    def get_popular_categories(
+    def get_categories_with_post_count(
         self,
         include_deleted: bool = False
-    ) -> List[Category]:
+    ) -> List[Tuple[Category, int]]:
         """
-        Get all categories ordered by popularity.
-
-        Returns ALL categories ordered by post count. For a limited number,
-        use pagination or slice the result.
+        Get all categories with their associated post counts.
 
         Args:
             include_deleted: If True, includes soft-deleted categories
 
         Returns:
-            List of all category instances ordered by popularity
-
-        Note:
-            Currently orders by created_at. Will be updated to use post count
-            when Post model relationship is implemented.
-        """
-        # Usa get_multi heredado del BaseRepository
-        return self.get_multi(
-            include_deleted=include_deleted,
-            order_by="created_at",
-            order_desc=True
-        )
-
-    def search_categories(
-        self,
-        search_term: str
-    ) -> List[Category]:
-        """
-        Search all categories by name or description.
-
-        This returns ALL matching categories without pagination.
-        For paginated results, use search_categories_paginated().
-
-        Args:
-            search_term: Text to search for
-
-        Returns:
-            List of all matching category instances
-
-        Warning:
-            This method returns ALL matching records without pagination.
-            For paginated search, use search_categories_paginated() instead.
-
-        """
-        return self.search(
-            search_fields=["name", "description"],
-            search_term=search_term
-        )
-
-    def search_categories_paginated(
-        self,
-        search_term: str,
-        pagination: "PaginationParams"
-    ) -> "PaginatedResponse[Category]":
-        """
-        Search categories with pagination.
-
-        Args:
-            search_term: Text to search for
-            pagination: PaginationParams with page and page_size
-
-        Returns:
-            PaginatedResponse with matching categories and pagination metadata
+            List of tuples (category, post_count) for all categories
 
         Example:
-            from app.schemas.base import PaginationParams
-            pagination = PaginationParams(page=1, page_size=20)
-            result = category_repo.search_categories_paginated("tech", pagination)
+            categories_with_counts = category_repo.get_categories_with_post_count()
+            for category, count in categories_with_counts:
+                print(f"{category.name}: {count} posts")
         """
-        return self.search_paginated(
-            search_fields=["name", "description"],
-            search_term=search_term,
-            pagination=pagination
-        )
+        query = self.db.query(
+            self.model,
+            func.count(Post.uuid).label('post_count')
+        ).outerjoin(
+            self.model.posts
+        ).group_by(self.model.uuid)
 
-    def get_or_create_by_name(
+        if not include_deleted:
+            query = query.filter(self.model.deleted_at.is_(None))
+
+        results = query.all()
+        return [(category, count) for category, count in results]
+
+    def get_popular_categories(
         self,
-        name: str,
-        **kwargs
-    ) -> Tuple[Category, bool]:
+        limit: Optional[int] = None,
+        include_deleted: bool = False
+    ) -> List[Category]:
         """
-        Get a category by name or create it if it doesn't exist.
+        Get categories ordered by post count (most popular first).
 
         Args:
-            name: The category name
-            **kwargs: Additional fields to set when creating
+            limit: Optional maximum number of categories to return
+            include_deleted: If True, includes soft-deleted categories
 
         Returns:
-            Tuple of (category_instance, created) where created is True
-            if a new category was created
+            List of category instances ordered by popularity
+
+        Example:
+            # Get top 10 most popular categories
+            top_categories = category_repo.get_popular_categories(limit=10)
         """
-        existing = self.get_by_name(name)
+        query = self.db.query(
+            self.model
+        ).outerjoin(
+            self.model.posts
+        ).group_by(
+            self.model.uuid
+        ).order_by(
+            func.count(Post.uuid).desc()
+        )
 
-        if existing:
-            return existing, False
+        if not include_deleted:
+            query = query.filter(self.model.deleted_at.is_(None))
 
-        obj_in = {"name": name, **kwargs}
-        new_category = self.create(obj_in)
-        return new_category, True
+        if limit:
+            query = query.limit(limit)
+
+        return query.all()
 
     def get_active_categories(self) -> List[Category]:
         """
         Get all active (non-deleted) categories ordered by name.
 
-        Returns ALL active categories without pagination.
-        For paginated results, use get_multi_paginated() from base repository.
+        Uses get_multi() from BaseRepository.
 
         Returns:
             List of all active category instances ordered by name
 
         Example:
-            # Get all active categories
             categories = category_repo.get_active_categories()
-
-            # For pagination, use get_multi_paginated:
-            from app.schemas.base import PaginationParams
-            pagination = PaginationParams(page=1, page_size=20)
-            result = category_repo.get_multi_paginated(
-                pagination=pagination,
-                include_deleted=False,
-                order_by="name"
-            )
         """
-        # Usa get_multi heredado con ordenamiento por nombre
         return self.get_multi(
             include_deleted=False,
             order_by="name",
             order_desc=False
         )
 
-    def get_categories_with_post_count(self) -> List[Tuple[Category, int]]:
-        """
-        Get all categories with their associated post counts.
+    # ========================================================================
+    # SEARCH METHODS (use BaseRepository methods)
+    # ========================================================================
 
-        Returns ALL categories with post counts. For pagination, use
-        get_multi_paginated() and then add post counts.
+    def search_categories(
+        self,
+        search_term: str,
+        include_deleted: bool = False
+    ) -> List[Category]:
+        """
+        Search categories by name or description.
+
+        Uses search() from BaseRepository.
+
+        Args:
+            search_term: Text to search for
+            include_deleted: If True, includes soft-deleted categories
 
         Returns:
-            List of tuples (category, post_count) for all categories
+            List of all matching category instances
 
-        Note:
-            Currently returns 0 for post count. Will be implemented when
-            Post model and relationship are added.
+        Example:
+            categories = category_repo.search_categories("tech")
         """
-        # TODO: Implementar conteo real cuando exista el modelo Post
-        categories = self.get_multi(
-            include_deleted=False
+        return self.search(
+            search_fields=["name", "description"],
+            search_term=search_term,
+            include_deleted=include_deleted
         )
-        return [(cat, 0) for cat in categories]
 
-    def bulk_create_categories(self, names: List[str]) -> List[Category]:
+    def search_categories_paginated(
+        self,
+        search_term: str,
+        pagination: PaginationParams,
+        include_deleted: bool = False
+    ) -> PaginatedResponse[Category]:
+        """
+        Search categories with pagination.
+
+        Uses search_paginated() from BaseRepository.
+
+        Args:
+            search_term: Text to search for
+            pagination: PaginationParams with page and page_size
+            include_deleted: If True, includes soft-deleted categories
+
+        Returns:
+            PaginatedResponse with matching categories and pagination metadata
+
+        Example:
+            pagination = PaginationParams(page=1, page_size=20)
+            result = category_repo.search_categories_paginated("tech", pagination)
+        """
+        return self.search_paginated(
+            search_fields=["name", "description"],
+            search_term=search_term,
+            pagination=pagination,
+            include_deleted=include_deleted
+        )
+
+    # ========================================================================
+    # GET OR CREATE METHODS (use BaseRepository methods)
+    # ========================================================================
+
+    def get_or_create_by_name(
+        self,
+        name: str,
+        defaults: Optional[dict] = None
+    ) -> Tuple[Category, bool]:
+        """
+        Get a category by name or create it if it doesn't exist.
+
+        Uses get_or_create() from BaseRepository.
+
+        Args:
+            name: The category name
+            defaults: Additional fields to set when creating (optional)
+
+        Returns:
+            Tuple of (category_instance, created)
+
+        Example:
+            category, created = category_repo.get_or_create_by_name(
+                name="Technology",
+                defaults={"description": "Tech-related posts"}
+            )
+        """
+        return self.get_or_create(
+            name=name,
+            defaults=defaults
+        )
+
+    def bulk_create_categories(
+        self,
+        names: List[str]
+    ) -> List[Category]:
         """
         Create multiple categories from a list of names.
+
+        Skips categories that already exist.
 
         Args:
             names: List of category names to create
 
         Returns:
-            List of created category instances
+            List of newly created category instances
+
+        Example:
+            new_categories = category_repo.bulk_create_categories([
+                "Technology", "Programming", "Design"
+            ])
         """
         categories_to_create = []
 
         for name in names:
-            # Verifica si la categoría ya existe
             existing = self.get_by_name(name)
             if not existing:
-                categories_to_create.append({
-                    "name": name,
-                })
+                categories_to_create.append({"name": name})
 
         if categories_to_create:
+            # Uses create_multi() from BaseRepository
             return self.create_multi(categories_to_create)
 
         return []
@@ -233,20 +273,24 @@ class CategoryRepository(BaseRepository[Category]):
         new_name: str,
     ) -> Optional[Category]:
         """
-        Update a category's name and optionally regenerate its slug.
+        Update a category's name.
+
+        Uses update() from BaseRepository.
 
         Args:
-            category_id: UUID of the category to update
+            category_uuid: UUID of the category to update
             new_name: The new name for the category
 
         Returns:
             Updated category instance, or None if not found
 
-
+        Example:
+            updated = category_repo.update_category_name(
+                category_uuid=uuid_obj,
+                new_name="New Technology"
+            )
         """
-        update_data = {"name": new_name}
-
-        return self.update(category_uuid, update_data)
+        return self.update(category_uuid, {"name": new_name})
 
     # ========================================================================
     # VALIDATION METHODS
@@ -255,23 +299,83 @@ class CategoryRepository(BaseRepository[Category]):
     def name_exists(
         self,
         name: str,
-        exclude_id: Optional[UUID] = None
+        exclude_uuid: Optional[UUID] = None
     ) -> bool:
         """
-        Check if a category name already exists.
+        Check if a category name already exists (case-insensitive).
 
         Args:
             name: The name to check
-            exclude_id: Optional UUID to exclude from check (for updates)
+            exclude_uuid: Optional UUID to exclude from check (for updates)
 
         Returns:
             True if the name exists, False otherwise
+
+        Example:
+            if category_repo.name_exists("Technology"):
+                raise HTTPException(409, "Category already exists")
         """
         query = self.db.query(self.model.uuid).filter(
             func.lower(self.model.name) == name.lower()
         ).filter(self.model.deleted_at.is_(None))
 
-        if exclude_id:
-            query = query.filter(self.model.uuid != exclude_id)
+        if exclude_uuid:
+            query = query.filter(self.model.uuid != exclude_uuid)
 
         return query.first() is not None
+
+    # ========================================================================
+    # CATEGORY STATISTICS
+    # ========================================================================
+
+    def get_category_post_count(
+        self,
+        category_uuid: UUID
+    ) -> int:
+        """
+        Get the number of posts in a specific category.
+
+        Args:
+            category_uuid: UUID of the category
+
+        Returns:
+            Number of posts in the category
+
+        Example:
+            count = category_repo.get_category_post_count(category_uuid)
+        """
+        category = self.get(category_uuid)
+        if not category:
+            return 0
+
+        return self.db.query(Post).join(
+            Post.categories
+        ).filter(
+            Category.uuid == category_uuid
+        ).filter(
+            Post.deleted_at.is_(None)
+        ).count()
+
+    def get_empty_categories(self) -> List[Category]:
+        """
+        Get all categories that have no posts.
+
+        Returns:
+            List of categories with zero posts
+
+        Example:
+            empty = category_repo.get_empty_categories()
+        """
+        query = self.db.query(
+            self.model
+        ).outerjoin(
+            self.model.posts
+        ).group_by(
+            self.model.uuid
+        ).having(
+            func.count(Post.uuid) == 0
+        ).filter(
+            self.model.deleted_at.is_(None)
+        )
+
+        return query.all()

@@ -40,6 +40,18 @@
 # Check Import Sorting (validate only, exit with error if not sorted)
     isort . --profile black --line-length 127 --check-only --diff
 
+# Flak 8
+
+## Automatically fix all whitespace errors
+autopep8 --in-place --recursive --select=W291,W292,W293 .  
+
+# Auto-fix all flake8 issues (whitespace, indentation, etc.)
+autopep8 --in-place --recursive --max-line-length 127 .
+autopep8 --in-place --recursive --aggressive --aggressive .
+
+## Or fix the entire project with all errors
+autopep8 --in-place --recursive --aggressive --aggressive .
+
 # Run Migrations
     alembic revision --autogenerate -m "updates on database" &&
     alembic upgrade head
