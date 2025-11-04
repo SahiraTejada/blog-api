@@ -15,7 +15,7 @@ Benefits:
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, cast
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 from uuid import UUID
 
 from sqlalchemy import func, or_
@@ -1063,8 +1063,7 @@ class BaseRepository(Generic[ModelType]):
 
                 if existing:
                     # Update existing record
-                    existing_uuid = cast(UUID, existing[0].uuid)
-                    updated = self.update(existing_uuid, obj_data)
+                    updated = self.update(existing[0].uuid, obj_data)
                     if updated:
                         instances.append(updated)
                         updated_count += 1

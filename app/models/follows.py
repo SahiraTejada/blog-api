@@ -1,10 +1,15 @@
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
+from uuid import UUID as UUID_TYPE
 
-from sqlalchemy import Column, DateTime, ForeignKey, PrimaryKeyConstraint
+from sqlalchemy import DateTime, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.connection import Base
+
+if TYPE_CHECKING:
+    from app.models.users import User
 
 
 class Follow(Base):
@@ -13,15 +18,30 @@ class Follow(Base):
 
     Uses a composite primary key (follower_uuid, followee_uuid) to ensure
     a user cannot follow the same user twice.
+
+    Note: This is an association table and does NOT inherit from BaseModel
+    as it doesn't need uuid, updated_at, or deleted_at fields.
     """
 
     __tablename__ = "follows"
 
     # User who is following (the follower)
-    follower_uuid = Column(UUID(as_uuid=True), ForeignKey("users.uuid"), nullable=False)
+    follower_uuid: Mapped[UUID_TYPE] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.uuid"),
+        nullable=False
+    )
     # User who is being followed (the followee)
-    followee_uuid = Column(UUID(as_uuid=True), ForeignKey("users.uuid"), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    followee_uuid: Mapped[UUID_TYPE] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.uuid"),
+        nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
 
     # Composite primary key ensures uniqueness of follower-followee pairs
     __table_args__ = (
@@ -30,13 +50,21 @@ class Follow(Base):
 
     # Relationships
     # Note: foreign_keys parameter is required because this table has TWO foreign keys
-    # pointing to the same Users table. SQLAlchemy needs explicit instruction on which
+    # pointing to the same User table. SQLAlchemy needs explicit instruction on which
     # foreign key column to use for each relationship to avoid ambiguity.
 
-    # The user who is doing the following (uses follower_uuid to join with Users.uuid)
-    follower = relationship("Users", foreign_keys=[follower_uuid], back_populates="following")
-    # The user who is being followed (uses followee_uuid to join with Users.uuid)
-    followee = relationship("Users", foreign_keys=[followee_uuid], back_populates="followers")
+    # The user who is doing the following (uses follower_uuid to join with User.uuid)
+    follower: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[follower_uuid],
+        back_populates="following"
+    )
+    # The user who is being followed (uses followee_uuid to join with User.uuid)
+    followee: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[followee_uuid],
+        back_populates="followers"
+    )
 
     def __repr__(self) -> str:
         """Return string representation of the model."""

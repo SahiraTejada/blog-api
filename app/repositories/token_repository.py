@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy import and_
@@ -119,7 +119,7 @@ class TokenRepository(BaseRepository[Token]):
                 token_type=TokenType.ACCESS
             )
         """
-        filters = {"user_uuid": user_uuid}
+        filters: Dict[str, Any] = {"user_uuid": user_uuid}
 
         if token_type:
             filters["type"] = token_type
@@ -134,7 +134,7 @@ class TokenRepository(BaseRepository[Token]):
         for token in tokens:
             if not include_revoked and token.revoked:
                 continue
-            if not include_expired and token.is_expired():
+            if not include_expired and token.is_expired:
                 continue
             result.append(token)
 

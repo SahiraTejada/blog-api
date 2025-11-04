@@ -9,7 +9,8 @@
       "Bash(curl:*)",
       "Bash(python -m flake8:*)",
       "Bash(python -c:*)",
-      "Bash(python -m isort:*)"
+      "Bash(python -m isort:*)",
+      "Bash(python -m mypy:*)"
     ],
     "deny": [],
     "ask": []
