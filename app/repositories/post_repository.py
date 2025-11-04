@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import func
@@ -52,7 +52,7 @@ class PostRepository(BaseRepository[Post]):
                 status=PostStatus.PUBLISHED
             )
         """
-        filters = {"author_uuid": author_uuid}
+        filters: Dict[str, Any] = {"author_uuid": author_uuid}
         if status:
             filters["status"] = status
 
@@ -76,9 +76,12 @@ class PostRepository(BaseRepository[Post]):
         Example:
             post = post_repo.get_by_title("My First Post")
         """
-        filters = {"title": title.lower()}
 
-        return self.filter_by(include_deleted=include_deleted, **filters)
+        results = self.filter_by(
+            include_deleted=include_deleted,
+            title=title.lower()
+        )
+        return results[0] if results else None
 
     # ========================================================================
     # SEARCH METHODS (use BaseRepository methods)
