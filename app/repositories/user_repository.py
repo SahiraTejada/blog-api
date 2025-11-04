@@ -4,12 +4,12 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models import Users
+from app.models import User
 from app.repositories.base_repository import BaseRepository
 from app.schemas.base import PaginatedResponse, PaginationParams
 
 
-class UserRepository(BaseRepository[Users]):
+class UserRepository(BaseRepository[User]):
     """
     Repository for User model operations.
 
@@ -19,7 +19,7 @@ class UserRepository(BaseRepository[Users]):
 
     def __init__(self, db: Session):
         """Initialize UserRepository with Users model."""
-        super().__init__(Users, db)
+        super().__init__(User, db)
 
     # ========================================================================
     # USER-SPECIFIC READ METHODS
@@ -29,7 +29,7 @@ class UserRepository(BaseRepository[Users]):
         self,
         username: str,
         include_deleted: bool = False
-    ) -> Optional[Users]:
+    ) -> Optional[User]:
         """
         Get a user by username (case-insensitive).
 
@@ -56,7 +56,7 @@ class UserRepository(BaseRepository[Users]):
         self,
         email: str,
         include_deleted: bool = False
-    ) -> Optional[Users]:
+    ) -> Optional[User]:
         """
         Get a user by email (case-insensitive).
 
@@ -79,7 +79,7 @@ class UserRepository(BaseRepository[Users]):
 
         return query.first()
 
-    def get_active_users(self, order_by: str = "created_at") -> List[Users]:
+    def get_active_users(self, order_by: str = "created_at") -> List[User]:
         """
         Get all active (non-deleted) users ordered by specified field.
 
@@ -118,7 +118,7 @@ class UserRepository(BaseRepository[Users]):
         self,
         search_term: str,
         include_deleted: bool = False
-    ) -> List[Users]:
+    ) -> List[User]:
         """
         Search users by username, email, first name, or last name.
 
@@ -151,7 +151,7 @@ class UserRepository(BaseRepository[Users]):
         search_term: str,
         pagination: PaginationParams,
         include_deleted: bool = False
-    ) -> PaginatedResponse[Users]:
+    ) -> PaginatedResponse[User]:
         """
         Search users with pagination.
 
@@ -280,7 +280,7 @@ class UserRepository(BaseRepository[Users]):
         self,
         email: str,
         defaults: Optional[dict] = None
-    ) -> Tuple[Users, bool]:
+    ) -> Tuple[User, bool]:
         """
         Get a user by email or create it if it doesn't exist.
 
@@ -318,7 +318,7 @@ class UserRepository(BaseRepository[Users]):
         self,
         username: str,
         defaults: Optional[dict] = None
-    ) -> Tuple[Users, bool]:
+    ) -> Tuple[User, bool]:
         """
         Get a user by username or create it if it doesn't exist.
 
@@ -355,7 +355,7 @@ class UserRepository(BaseRepository[Users]):
         self,
         role: str,
         include_deleted: bool = False
-    ) -> List[Users]:
+    ) -> List[User]:
         """
         Get all users with a specific role.
 

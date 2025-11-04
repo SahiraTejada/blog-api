@@ -12,7 +12,7 @@ class UserRole(enum.Enum):
     GUEST = "GUEST"
 
 
-class Users(BaseModel):
+class User(BaseModel):
 
     __tablename__ = "users"
 

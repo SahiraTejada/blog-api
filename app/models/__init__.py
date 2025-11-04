@@ -1,24 +1,24 @@
 from app.models.base import Base, BaseModel
 from app.models.categories import Category, post_categories
-from app.models.comments import Comments
-from app.models.follows import Follows
-from app.models.likes import Likes
+from app.models.comments import Comment
+from app.models.follows import Follow
+from app.models.likes import Like
 from app.models.posts import Post, PostStatus
 from app.models.tokens import Token, TokenType
-from app.models.users import UserRole, Users
+from app.models.users import UserRole, User
 
 __all__ = [
     "Base",
     "BaseModel",
     "Category",
     "post_categories",
-    "Comments",
-    "Likes",
+    "Comment",
+    "Like",
     "Post",
     "PostStatus",
-    "Follows",
+    "Follow",
     "Token",
     "TokenType",
     "UserRole",
-    "Users"
+    "User"
 ]

@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship
 from app.database.connection import Base
 
 
-class Follows(Base):
+class Follow(Base):
     """
     Self-referential many-to-many relationship for user follows.
 
