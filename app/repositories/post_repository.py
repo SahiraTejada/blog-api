@@ -45,7 +45,7 @@ class PostRepository(BaseRepository[Post]):
         Example:
             # Get all posts by author
             posts = post_repo.get_by_author_uuid(user_uuid)
-            
+
             # Get only published posts by author
             published = post_repo.get_by_author_uuid(
                 user_uuid, 
@@ -333,7 +333,7 @@ class PostRepository(BaseRepository[Post]):
                 order_by="created_at",
                 order_desc=True
             )
-        
+
         return self.filter_by(
             status=PostStatus.PUBLISHED,
             include_deleted=include_deleted
@@ -367,7 +367,7 @@ class PostRepository(BaseRepository[Post]):
                 order_by="updated_at",
                 order_desc=True
             )
-        
+
         return self.filter_by(
             status=PostStatus.DRAFT,
             include_deleted=include_deleted
