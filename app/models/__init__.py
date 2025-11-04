@@ -5,7 +5,7 @@ from app.models.follows import Follow
 from app.models.likes import Like
 from app.models.posts import Post, PostStatus
 from app.models.tokens import Token, TokenType
-from app.models.users import UserRole, User
+from app.models.users import User, UserRole
 
 __all__ = [
     "Base",
