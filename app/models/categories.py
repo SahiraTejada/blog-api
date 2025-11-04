@@ -1,8 +1,13 @@
+from typing import TYPE_CHECKING, List, Optional
+
 from sqlalchemy import Column, ForeignKey, String, Table, Text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
+
+if TYPE_CHECKING:
+    from app.models.posts import Post
 
 post_categories = Table(
     'post_categories',
@@ -13,13 +18,23 @@ post_categories = Table(
 
 
 class Category(BaseModel):
+    """Category model for organizing posts."""
 
     __tablename__ = "categories"
 
-    name = Column(String(255), unique=True, nullable=False)
-    description = Column(Text, nullable=True)
+    name: Mapped[str] = mapped_column(
+        String(255),
+        unique=True,
+        nullable=False
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        default=None
+    )
+
     # Relationships
-    posts = relationship(
+    posts: Mapped[List["Post"]] = relationship(
         "Post",
         secondary=post_categories,
         back_populates="categories"

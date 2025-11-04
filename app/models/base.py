@@ -1,26 +1,47 @@
 from datetime import datetime, timezone
+from typing import Optional
+from uuid import UUID as UUID_TYPE
 from uuid import uuid4
 
-from sqlalchemy import Column, DateTime
+from sqlalchemy import DateTime
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.connection import Base
 
 
 class BaseModel(Base):
-    """Base model with common fields for all models."""
+    """
+    Base model with common fields for all models.
+
+    Using SQLAlchemy 2.0 style with Mapped annotations.
+    """
 
     __abstract__ = True
 
-    uuid = Column(UUID(as_uuid=True), unique=True, primary_key=True, index=True, default=uuid4)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(
+    uuid: Mapped[UUID_TYPE] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        unique=True,
+        index=True,
+        default=uuid4
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False
     )
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None
+    )
 
     def __repr__(self) -> str:
         """Return string representation of the model."""
