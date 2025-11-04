@@ -427,3 +427,4 @@ class TokenRepository(BaseRepository[Token]):
         return self.db.query(self.model.uuid).filter(
             self.model.token == token
         ).filter(self.model.deleted_at.is_(None)).first() is not None
+        
