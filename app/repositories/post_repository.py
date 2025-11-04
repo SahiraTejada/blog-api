@@ -48,7 +48,7 @@ class PostRepository(BaseRepository[Post]):
 
             # Get only published posts by author
             published = post_repo.get_by_author_uuid(
-                user_uuid, 
+                user_uuid,
                 status=PostStatus.PUBLISHED
             )
         """
@@ -259,7 +259,7 @@ class PostRepository(BaseRepository[Post]):
         Example:
             pagination = PaginationParams(page=1, page_size=20)
             result = post_repo.get_posts_by_status_paginated(
-                PostStatus.PUBLISHED, 
+                PostStatus.PUBLISHED,
                 pagination
             )
         """
