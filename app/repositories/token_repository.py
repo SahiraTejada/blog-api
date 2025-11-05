@@ -43,14 +43,8 @@ class TokenRepository(BaseRepository[Token]):
         Example:
             token_obj = token_repo.get_by_token("eyJhbGc...")
         """
-        query = self.db.query(self.model).filter(
-            self.model.token == token
-        )
+        return self.get_by_text_field({"token": token}, case_insensitive=False, include_deleted=include_deleted)
 
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
-
-        return query.first()
 
     def get_valid_token(
         self,

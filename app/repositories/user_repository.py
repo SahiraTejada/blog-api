@@ -1,12 +1,11 @@
 from typing import List, Optional, Tuple
-from uuid import UUID
-
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import User
 from app.repositories.base_repository import BaseRepository
-from app.schemas.base import PaginatedResponse, PaginationParams
+from app.schemas.base import PaginationParams
+
+from uuid import UUID
 
 
 class UserRepository(BaseRepository[User]):
@@ -25,11 +24,8 @@ class UserRepository(BaseRepository[User]):
     # USER-SPECIFIC READ METHODS
     # ========================================================================
 
-    def get_by_username(
-        self,
-        username: str,
-        include_deleted: bool = False
-    ) -> Optional[User]:
+
+    def get_by_username(self, username: str, include_deleted: bool = False) -> Optional[User]:
         """
         Get a user by username (case-insensitive).
 
@@ -43,20 +39,10 @@ class UserRepository(BaseRepository[User]):
         Example:
             user = user_repo.get_by_username("johndoe")
         """
-        query = self.db.query(self.model).filter(
-            func.lower(self.model.username) == username.lower()
-        )
 
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
+        return self.get_by_text_field({"username": username}, include_deleted=include_deleted)
 
-        return query.first()
-
-    def get_by_email(
-        self,
-        email: str,
-        include_deleted: bool = False
-    ) -> Optional[User]:
+    def get_by_email(self, email: str, include_deleted: bool = False) -> Optional[User]:
         """
         Get a user by email (case-insensitive).
 
@@ -70,109 +56,52 @@ class UserRepository(BaseRepository[User]):
         Example:
             user = user_repo.get_by_email("john@example.com")
         """
-        query = self.db.query(self.model).filter(
-            func.lower(self.model.email) == email.lower()
-        )
+        return self.get_by_text_field({"email": email}, include_deleted=include_deleted)
 
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
-
-        return query.first()
-
-    def get_active_users(self, order_by: str = "created_at") -> List[User]:
+    def get_all_users(
+        self,
+        order_by: str = "created_at",
+        role: Optional[str] = None,
+        search_term: Optional[str] = None,
+        pagination: Optional[PaginationParams] = None,
+    ) -> List[User]:
         """
-        Get all active (non-deleted) users ordered by specified field.
-
-        Returns ALL active users without pagination.
-        For paginated results, use get_multi_paginated() from base repository.
+        Get all active (non-deleted) users with optional filtering and pagination.
 
         Args:
             order_by: Field to order by. Default: "created_at"
+            role: Filter users by role
+            search_term: Search in username, email, first_name, and last_name
+            pagination: Pagination parameters. If None, returns all users
 
         Returns:
-            List of all active user instances
+            List of active user instances
 
         Example:
             # Get all active users ordered by creation date
-            users = user_repo.get_active_users()
+            users = user_repo.get_all_users()
 
-            # Get all active users ordered by username
-            users = user_repo.get_active_users(order_by="username")
+            # Get users filtered by role
+            admins = user_repo.get_all_users(role="admin")
 
-            # For pagination, use get_multi_paginated:
-            from app.schemas.base import PaginationParams
+            # Search with pagination
             pagination = PaginationParams(page=1, page_size=20)
-            result = user_repo.get_multi_paginated(
-                pagination=pagination,
-                include_deleted=False,
-                order_by="username"
+            users = user_repo.get_all_users(
+                search_term="john",
+                pagination=pagination
             )
         """
+        filters = {"role": role} if role else None
+        search_fields = ["username", "email", "first_name", "last_name"] if search_term else None
+
         return self.get_multi(
             include_deleted=False,
             order_by=order_by,
-            order_desc=False
-        )
-
-    def search_users(
-        self,
-        search_term: str,
-        include_deleted: bool = False
-    ) -> List[User]:
-        """
-        Search users by username, email, first name, or last name.
-
-        Returns ALL matching users without pagination.
-        For paginated results, use search_users_paginated().
-
-        Args:
-            search_term: Text to search for
-            include_deleted: If True, includes soft-deleted users
-
-        Returns:
-            List of all matching user instances
-
-        Example:
-            # Search for users
-            users = user_repo.search_users("john")
-
-            # For paginated search:
-            pagination = PaginationParams(page=1, page_size=20)
-            result = user_repo.search_users_paginated("john", pagination)
-        """
-        return self.search(
-            search_fields=["username", "email", "first_name", "last_name"],
-            search_term=search_term,
-            include_deleted=include_deleted
-        )
-
-    def search_users_paginated(
-        self,
-        search_term: str,
-        pagination: PaginationParams,
-        include_deleted: bool = False
-    ) -> PaginatedResponse[User]:
-        """
-        Search users with pagination.
-
-        Args:
-            search_term: Text to search for
-            pagination: PaginationParams with page and page_size
-            include_deleted: If True, includes soft-deleted users
-
-        Returns:
-            PaginatedResponse with matching users and pagination metadata
-
-        Example:
-            from app.schemas.base import PaginationParams
-            pagination = PaginationParams(page=1, page_size=20)
-            result = user_repo.search_users_paginated("john", pagination)
-        """
-        return self.search_paginated(
-            search_fields=["username", "email", "first_name", "last_name"],
-            search_term=search_term,
+            order_desc=False,
             pagination=pagination,
-            include_deleted=include_deleted
+            search_fields=search_fields,
+            search_term=search_term,
+            filters=filters,
         )
 
     # ========================================================================
@@ -182,7 +111,6 @@ class UserRepository(BaseRepository[User]):
     def username_exists(
         self,
         username: str,
-        exclude_uuid: Optional[UUID] = None
     ) -> bool:
         """
         Check if a username already exists (case-insensitive).
@@ -202,19 +130,11 @@ class UserRepository(BaseRepository[User]):
             if user_repo.username_exists("johndoe", exclude_uuid=user.uuid):
                 raise HTTPException(409, "Username already taken")
         """
-        query = self.db.query(self.model.uuid).filter(
-            func.lower(self.model.username) == username.lower()
-        ).filter(self.model.deleted_at.is_(None))
-
-        if exclude_uuid:
-            query = query.filter(self.model.uuid != exclude_uuid)
-
-        return query.first() is not None
+        return self.get_by_username(username) is not None
 
     def email_exists(
         self,
         email: str,
-        exclude_uuid: Optional[UUID] = None
     ) -> bool:
         """
         Check if an email already exists (case-insensitive).
@@ -234,53 +154,13 @@ class UserRepository(BaseRepository[User]):
             if user_repo.email_exists("john@example.com", exclude_uuid=user.uuid):
                 raise HTTPException(409, "Email already registered")
         """
-        query = self.db.query(self.model.uuid).filter(
-            func.lower(self.model.email) == email.lower()
-        ).filter(self.model.deleted_at.is_(None))
-
-        if exclude_uuid:
-            query = query.filter(self.model.uuid != exclude_uuid)
-
-        return query.first() is not None
-
-    def username_or_email_exists(
-        self,
-        username: str,
-        email: str,
-        exclude_uuid: Optional[UUID] = None
-    ) -> dict:
-        """
-        Check if username or email already exists.
-
-        Args:
-            username: The username to check
-            email: The email to check
-            exclude_uuid: Optional UUID to exclude from check (for updates)
-
-        Returns:
-            Dictionary with 'username' and 'email' booleans
-
-        Example:
-            exists = user_repo.username_or_email_exists("johndoe", "john@example.com")
-            if exists['username']:
-                raise HTTPException(409, "Username already taken")
-            if exists['email']:
-                raise HTTPException(409, "Email already registered")
-        """
-        return {
-            'username': self.username_exists(username, exclude_uuid),
-            'email': self.email_exists(email, exclude_uuid)
-        }
+        return self.get_by_email(email) is not None
 
     # ========================================================================
     # GET OR CREATE METHODS
     # ========================================================================
 
-    def get_or_create_by_email(
-        self,
-        email: str,
-        defaults: Optional[dict] = None
-    ) -> Tuple[User, bool]:
+    def get_or_create_by_email(self, email: str, defaults: Optional[dict] = None) -> Tuple[User, bool]:
         """
         Get a user by email or create it if it doesn't exist.
 
@@ -309,16 +189,9 @@ class UserRepository(BaseRepository[User]):
             else:
                 print("User already existed")
         """
-        return self.get_or_create(
-            email=email,
-            defaults=defaults
-        )
+        return self.get_or_create(email=email, defaults=defaults)
 
-    def get_or_create_by_username(
-        self,
-        username: str,
-        defaults: Optional[dict] = None
-    ) -> Tuple[User, bool]:
+    def get_or_create_by_username(self, username: str, defaults: Optional[dict] = None) -> Tuple[User, bool]:
         """
         Get a user by username or create it if it doesn't exist.
 
@@ -342,37 +215,11 @@ class UserRepository(BaseRepository[User]):
                 }
             )
         """
-        return self.get_or_create(
-            username=username,
-            defaults=defaults
-        )
+        return self.get_or_create(username=username, defaults=defaults)
 
     # ========================================================================
     # USER-SPECIFIC METHODS
     # ========================================================================
-
-    def get_users_by_role(
-        self,
-        role: str,
-        include_deleted: bool = False
-    ) -> List[User]:
-        """
-        Get all users with a specific role.
-
-        Args:
-            role: The role to filter by (e.g., "admin", "user")
-            include_deleted: If True, includes soft-deleted users
-
-        Returns:
-            List of users with the specified role
-
-        Example:
-            admins = user_repo.get_users_by_role("admin")
-        """
-        return self.filter_by(
-            role=role,
-            include_deleted=include_deleted
-        )
 
     def count_by_role(self, role: str) -> int:
         """
