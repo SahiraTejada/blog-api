@@ -1,11 +1,11 @@
 from typing import List, Optional, Tuple
+from uuid import UUID
+
 from sqlalchemy.orm import Session
 
 from app.models import User
 from app.repositories.base_repository import BaseRepository
 from app.schemas.base import PaginationParams
-
-from uuid import UUID
 
 
 class UserRepository(BaseRepository[User]):
@@ -23,7 +23,6 @@ class UserRepository(BaseRepository[User]):
     # ========================================================================
     # USER-SPECIFIC READ METHODS
     # ========================================================================
-
 
     def get_by_username(self, username: str, include_deleted: bool = False) -> Optional[User]:
         """

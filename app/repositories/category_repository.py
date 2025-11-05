@@ -46,7 +46,6 @@ class CategoryRepository(BaseRepository[Category]):
 
         return self.get_by_text_field({"name": name}, include_deleted=include_deleted)
 
-
     def get_categories_with_post_count(
         self,
         include_deleted: bool = False
@@ -115,11 +114,11 @@ class CategoryRepository(BaseRepository[Category]):
 
         return query.all()
 
-    def get_all_categories(self,       
+    def get_all_categories(self,
                            include_deleted: bool = False,
-                            search_term: Optional[str] = None,
-                            pagination: Optional[PaginationParams] = None,
-) -> List[Category]:
+                           search_term: Optional[str] = None,
+                           pagination: Optional[PaginationParams] = None,
+                           ) -> List[Category]:
         """
         Get all active (non-deleted) categories ordered by name.
 
@@ -141,7 +140,7 @@ class CategoryRepository(BaseRepository[Category]):
             pagination=pagination,
             order_desc=False
         )
-        
+
     # ========================================================================
     # GET OR CREATE METHODS (use BaseRepository methods)
     # ========================================================================

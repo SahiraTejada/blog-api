@@ -960,7 +960,7 @@ class BaseRepository(Generic[ModelType]):
             self.db.commit()
 
             # Refresh all new objects
-            for obj in instances[len(instances) - created_count :]:
+            for obj in instances[len(instances) - created_count:]:
                 self.db.refresh(obj)
 
             return instances, created_count, updated_count

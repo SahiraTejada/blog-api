@@ -45,7 +45,6 @@ class TokenRepository(BaseRepository[Token]):
         """
         return self.get_by_text_field({"token": token}, case_insensitive=False, include_deleted=include_deleted)
 
-
     def get_valid_token(
         self,
         token: str,
