@@ -1,13 +1,5 @@
-"""
-Validator utility functions for Pydantic schemas.
-
-This module provides reusable validator functions that can be used across
-multiple schemas to ensure consistent validation logic throughout the application.
-"""
 import re
 from typing import Optional
-
-from pydantic import ValidationError
 
 
 def validate_username(username: Optional[str], allow_none: bool = False) -> Optional[str]:
