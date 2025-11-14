@@ -50,7 +50,8 @@ class TokenCreateSchema(CreateSchema):
         default=None,
         max_length=45,
         description="IP address associated with the token"
-    )    
+    )
+
 
 class TokenUpdateSchema(UpdateSchema):
     """

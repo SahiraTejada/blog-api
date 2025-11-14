@@ -76,7 +76,6 @@ class Token(BaseModel):
         default=None
     )
 
-
     # Relationships
     user: Mapped["User"] = relationship(
         "User",
