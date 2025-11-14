@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import Field
 
 from app.models.tokens import TokenType
-from app.schemas.base import CreateSchema, ResponseSchema, UpdateSchema
+from app.schemas.base import BaseSchema, CreateSchema, ResponseSchema, UpdateSchema
 
 
 class TokenCreateSchema(CreateSchema):
@@ -148,4 +148,43 @@ class TokenResponseSchema(ResponseSchema):
     )
     ip_address: Optional[str] = Field(
         description="IP address associated with the token"
+    )
+
+
+class RefreshTokenResponseSchema(BaseSchema):
+    """
+    Schema for refresh token response.
+
+    Returns a new access token (and optionally a new refresh token).
+
+    Attributes:
+        access_token: New JWT access token
+        refresh_token: New refresh token (optional, for token rotation)
+        token_type: Type of token (always "bearer")
+        expires_in: Time in seconds until access token expires
+
+    Example:
+        {
+            "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "token_type": "bearer",
+            "expires_in": 3600
+        }
+    """
+
+    access_token: str = Field(
+        description="New JWT access token",
+        json_schema_extra={"example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
+    )
+    refresh_token: Optional[str] = Field(
+        default=None,
+        description="New refresh token (for token rotation)",
+        json_schema_extra={"example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
+    )
+    token_type: str = Field(
+        default="bearer",
+        description="Token type (always bearer for JWT)"
+    )
+    expires_in: int = Field(
+        description="Time in seconds until access token expires",
+        json_schema_extra={"example": 3600}
     )
