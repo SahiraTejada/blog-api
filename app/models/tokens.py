@@ -75,11 +75,7 @@ class Token(BaseModel):
         nullable=True,
         default=None
     )
-    user_agent: Mapped[Optional[str]] = mapped_column(
-        String(255),
-        nullable=True,
-        default=None
-    )
+
 
     # Relationships
     user: Mapped["User"] = relationship(
