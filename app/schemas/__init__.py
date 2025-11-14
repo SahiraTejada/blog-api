@@ -32,7 +32,6 @@ from app.schemas.user import (
     UserPasswordUpdateSchema,
     UserPublicSchema,
     UserResponseSchema,
-    UserSummarySchema,
     UserUpdateSchema,
 )
 
@@ -62,5 +61,4 @@ __all__ = [
     "UserPasswordUpdateSchema",
     "UserResponseSchema",
     "UserPublicSchema",
-    "UserSummarySchema",
 ]
