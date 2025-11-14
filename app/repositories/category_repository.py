@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 from uuid import UUID
 
 from sqlalchemy import func
@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models import Category, Post
 from app.repositories.base_repository import BaseRepository
 from app.schemas.base import PaginationParams
+from app.utils.pagination import PaginatedResponse
 
 
 class CategoryRepository(BaseRepository[Category]):
@@ -118,7 +119,7 @@ class CategoryRepository(BaseRepository[Category]):
                            include_deleted: bool = False,
                            search_term: Optional[str] = None,
                            pagination: Optional[PaginationParams] = None,
-                           ) -> List[Category]:
+                           ) -> Union[List[Category], PaginatedResponse[Category]]:
         """
         Get all active (non-deleted) categories ordered by name.
 
@@ -287,7 +288,7 @@ class CategoryRepository(BaseRepository[Category]):
         Example:
             count = category_repo.get_category_post_count(category_uuid)
         """
-        category = self.get(category_uuid)
+        category = self.get_by_uuid(category_uuid)
         if not category:
             return 0
 

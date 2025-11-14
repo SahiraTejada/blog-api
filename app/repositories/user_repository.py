@@ -1,10 +1,11 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from sqlalchemy.orm import Session
 
 from app.models import User
 from app.repositories.base_repository import BaseRepository
 from app.schemas.base import PaginationParams
+from app.utils.pagination import PaginatedResponse
 
 
 class UserRepository(BaseRepository[User]):
@@ -62,7 +63,7 @@ class UserRepository(BaseRepository[User]):
         role: Optional[str] = None,
         search_term: Optional[str] = None,
         pagination: Optional[PaginationParams] = None,
-    ) -> List[User]:
+    ) -> Union[List[User], PaginatedResponse[User]]:
         """
         Get all active (non-deleted) users with optional filtering and pagination.
 

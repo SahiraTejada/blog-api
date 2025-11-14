@@ -593,7 +593,7 @@ class BaseRepository(Generic[ModelType]):
             - Returns None if the record doesn't exist or is soft-deleted
         """
         # Fetch the existing record
-        db_obj = self.get(uuid)
+        db_obj = self.get_by_uuid(uuid)
 
         if not db_obj:
             return None
@@ -712,7 +712,7 @@ class BaseRepository(Generic[ModelType]):
         Note:
             Soft-deleted records can be restored using restore() method.
         """
-        db_obj = self.get(uuid)
+        db_obj = self.get_by_uuid(uuid)
 
         if not db_obj:
             return False
@@ -813,7 +813,7 @@ class BaseRepository(Generic[ModelType]):
             cannot be restored.
         """
         # Look for the record including deleted ones
-        db_obj = self.get(uuid, include_deleted=True)
+        db_obj = self.get_by_uuid(uuid, include_deleted=True)
 
         if not db_obj or db_obj.deleted_at is None:
             return False
