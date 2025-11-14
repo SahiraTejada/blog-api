@@ -28,9 +28,8 @@ from app.schemas.base import (
 
 # User schemas
 from app.schemas.user import (
-    UserCreateSchema,
-    UserPasswordUpdateSchema,
     UserPublicSchema,
+    UserBaseSchema,
     UserResponseSchema,
     UserUpdateSchema,
 )
@@ -56,9 +55,8 @@ __all__ = [
     "StatusSchema",
     "UUIDListSchema",
     # User schemas
-    "UserCreateSchema",
     "UserUpdateSchema",
-    "UserPasswordUpdateSchema",
     "UserResponseSchema",
     "UserPublicSchema",
+    "UserBaseSchema"
 ]
