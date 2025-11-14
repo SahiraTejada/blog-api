@@ -7,6 +7,7 @@ from pydantic import Field
 from app.models.tokens import TokenType
 from app.schemas.base import CreateSchema, ResponseSchema, UpdateSchema
 
+
 class TokenCreateSchema(CreateSchema):
     """
     Schema for creating a new token.
