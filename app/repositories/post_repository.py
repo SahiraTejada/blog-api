@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
 from sqlalchemy import func
@@ -29,18 +29,22 @@ class PostRepository(BaseRepository[Post]):
         self,
         author_uuid: UUID,
         status: Optional[PostStatus] = PostStatus.PUBLISHED,
-        include_deleted: bool = False
-    ) -> List[Post]:
+        include_deleted: bool = False,
+        pagination: Optional[PaginationParams] = None,
+    ) -> Union[List[Post], PaginatedResponse[Post]]:
         """
         Get all posts by an author UUID.
+
+        Convenience method that uses get_posts() internally.
 
         Args:
             author_uuid: The UUID of the author
             status: Optional status filter (e.g., PostStatus.PUBLISHED)
             include_deleted: If True, includes soft-deleted posts
+            pagination: Optional pagination parameters
 
         Returns:
-            List of post instances created by the author, empty list if none found
+            List of post instances or PaginatedResponse if pagination provided
 
         Example:
             # Get all posts by author
@@ -51,12 +55,14 @@ class PostRepository(BaseRepository[Post]):
                 user_uuid,
                 status=PostStatus.PUBLISHED
             )
-        """
-        filters: Dict[str, Any] = {"author_uuid": author_uuid}
-        if status:
-            filters["status"] = status
 
-        return self.filter_by(include_deleted=include_deleted, **filters)
+            # With pagination
+            result = post_repo.get_by_author_uuid(
+                user_uuid,
+                pagination=PaginationParams(page=1, page_size=20)
+            )
+        """
+        return self.get_posts(author_uuid=author_uuid, status=status, include_deleted=include_deleted, pagination=pagination)
 
     def get_by_title(
         self,
@@ -77,81 +83,88 @@ class PostRepository(BaseRepository[Post]):
             post = post_repo.get_by_title("My First Post")
         """
 
-        results = self.filter_by(
-            include_deleted=include_deleted,
-            title=title.lower()
-        )
-        return results[0] if results else None
+        return self.get_by_text_field({"title": title}, include_deleted=include_deleted)
 
     # ========================================================================
     # SEARCH METHODS (use BaseRepository methods)
     # ========================================================================
 
-    def search_posts(
+    def get_posts(
         self,
-        search_term: str,
-        include_deleted: bool = False
-    ) -> List[Post]:
+        include_deleted: bool = False,
+        pagination: Optional[PaginationParams] = None,
+        status: Optional[PostStatus] = PostStatus.PUBLISHED,
+        search_term: Optional[str] = None,
+        category_uuid: Optional[UUID] = None,
+        author_uuid: Optional[UUID] = None,
+    ) -> Union[List[Post], PaginatedResponse[Post]]:
         """
-        Search posts by title or content.
+        Get posts with flexible filtering options.
 
-        Uses search() from BaseRepository.
+        This is the main method for retrieving posts with various filters.
+        Supports status, search, category, and author filtering with optional pagination.
 
         Args:
-            search_term: Text to search for
             include_deleted: If True, includes soft-deleted posts
+            pagination: Optional pagination parameters
+            status: Filter by post status (default: PUBLISHED)
+            search_term: Search in title and content
+            category_uuid: Filter posts by category (many-to-many relation)
+            author_uuid: Filter posts by author
 
         Returns:
-            List of all matching post instances
+            List of post instances or PaginatedResponse if pagination provided
 
-        Example:
-            posts = post_repo.search_posts("python")
+        Examples:
+            # Get all published posts
+            posts = post_repo.get_posts()
+
+            # Search published posts
+            posts = post_repo.get_posts(search_term="python")
+
+            # Get posts by category
+            posts = post_repo.get_posts(category_uuid=category_id)
+
+            # Get posts by author with pagination
+            posts = post_repo.get_posts(
+                author_uuid=user_id,
+                pagination=PaginationParams(page=1, page_size=20)
+            )
+
+            # Complex query: published posts in category with search
+            posts = post_repo.get_posts(
+                status=PostStatus.PUBLISHED,
+                category_uuid=tech_category_id,
+                search_term="tutorial",
+                pagination=pagination
+            )
         """
-        return self.search(
-            search_fields=["title", "content"],
+
+        filters: Dict[str, Any] = {}
+        if status:
+            filters["status"] = status
+        if author_uuid:
+            filters["author_uuid"] = author_uuid
+
+        search_fields = ["title", "content"] if search_term else None
+
+        if category_uuid:
+            base_query = self.db.query(self.model).join(self.model.categories).filter(Category.uuid == category_uuid)
+
+        return self.get_multi(
+            search_fields=search_fields,
             search_term=search_term,
-            include_deleted=include_deleted
-        )
-
-    def search_posts_paginated(
-        self,
-        search_term: str,
-        pagination: PaginationParams,
-        include_deleted: bool = False
-    ) -> PaginatedResponse[Post]:
-        """
-        Search posts with pagination.
-
-        Uses search_paginated() from BaseRepository.
-
-        Args:
-            search_term: Text to search for
-            pagination: PaginationParams with page and page_size
-            include_deleted: If True, includes soft-deleted posts
-
-        Returns:
-            PaginatedResponse with matching posts and pagination metadata
-
-        Example:
-            pagination = PaginationParams(page=1, page_size=20)
-            result = post_repo.search_posts_paginated("python", pagination)
-        """
-        return self.search_paginated(
-            search_fields=["title", "content"],
-            search_term=search_term,
+            filters=filters if filters else None,
             pagination=pagination,
-            include_deleted=include_deleted
+            include_deleted=include_deleted,
+            base_query=base_query if category_uuid else None,
         )
 
     # ========================================================================
     # VALIDATION METHODS
     # ========================================================================
 
-    def title_exists(
-        self,
-        title: str,
-        exclude_uuid: Optional[UUID] = None
-    ) -> bool:
+    def title_exists(self, title: str, exclude_uuid: Optional[UUID] = None) -> bool:
         """
         Check if a post title already exists (case-insensitive).
 
@@ -166,9 +179,11 @@ class PostRepository(BaseRepository[Post]):
             if post_repo.title_exists("My Post"):
                 raise HTTPException(409, "Title already taken")
         """
-        query = self.db.query(self.model.uuid).filter(
-            func.lower(self.model.title) == title.lower()
-        ).filter(self.model.deleted_at.is_(None))
+        query = (
+            self.db.query(self.model.uuid)
+            .filter(func.lower(self.model.title) == title.lower())
+            .filter(self.model.deleted_at.is_(None))
+        )
 
         if exclude_uuid:
             query = query.filter(self.model.uuid != exclude_uuid)
@@ -179,11 +194,7 @@ class PostRepository(BaseRepository[Post]):
     # GET OR CREATE METHODS (use BaseRepository methods)
     # ========================================================================
 
-    def get_or_create_by_title(
-        self,
-        title: str,
-        defaults: Optional[dict] = None
-    ) -> Tuple[Post, bool]:
+    def get_or_create_by_title(self, title: str, defaults: Optional[dict] = None) -> Tuple[Post, bool]:
         """
         Get a post by title or create it if it doesn't exist.
 
@@ -206,175 +217,7 @@ class PostRepository(BaseRepository[Post]):
                 }
             )
         """
-        return self.get_or_create(
-            title=title,
-            defaults=defaults
-        )
-
-    # ========================================================================
-    # POST-SPECIFIC METHODS (use BaseRepository methods where possible)
-    # ========================================================================
-
-    def get_posts_by_status(
-        self,
-        status: PostStatus,
-        include_deleted: bool = False
-    ) -> List[Post]:
-        """
-        Get all posts with a specific status.
-
-        Uses filter_by() from BaseRepository.
-
-        Args:
-            status: The status to filter by (PostStatus enum)
-            include_deleted: If True, includes soft-deleted posts
-
-        Returns:
-            List of posts with the specified status
-
-        Example:
-            published_posts = post_repo.get_posts_by_status(PostStatus.PUBLISHED)
-        """
-        return self.filter_by(
-            status=status,
-            include_deleted=include_deleted
-        )
-
-    def get_posts_by_status_paginated(
-        self,
-        status: PostStatus,
-        pagination: PaginationParams,
-        include_deleted: bool = False
-    ) -> PaginatedResponse[Post]:
-        """
-        Get posts by status with pagination.
-
-        Uses get_multi_paginated() from BaseRepository.
-
-        Args:
-            status: The status to filter by (PostStatus enum)
-            pagination: PaginationParams with page and page_size
-            include_deleted: If True, includes soft-deleted posts
-
-        Returns:
-            PaginatedResponse with posts and pagination metadata
-
-        Example:
-            pagination = PaginationParams(page=1, page_size=20)
-            result = post_repo.get_posts_by_status_paginated(
-                PostStatus.PUBLISHED,
-                pagination
-            )
-        """
-        return self.get_multi_paginated(
-            pagination=pagination,
-            filters={"status": status},
-            include_deleted=include_deleted,
-            order_by="created_at",
-            order_desc=True
-        )
-
-    def get_posts_by_category(
-        self,
-        category_uuid: UUID,
-        include_deleted: bool = False
-    ) -> List[Post]:
-        """
-        Get all posts in a specific category.
-
-        Args:
-            category_uuid: The UUID of the category
-            include_deleted: If True, includes soft-deleted posts
-
-        Returns:
-            List of posts in the specified category
-
-        Example:
-            posts = post_repo.get_posts_by_category(category_uuid)
-        """
-        query = self.db.query(self.model).join(
-            self.model.categories
-        ).filter(
-            Category.uuid == category_uuid
-        )
-
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
-
-        return query.all()
-
-    def get_published_posts(
-        self,
-        pagination: Optional[PaginationParams] = None,
-        include_deleted: bool = False
-    ) -> List[Post] | PaginatedResponse[Post]:
-        """
-        Get all published posts, optionally paginated.
-
-        Uses filter_by() or get_multi_paginated() from BaseRepository.
-
-        Args:
-            pagination: Optional pagination parameters
-            include_deleted: If True, includes soft-deleted posts
-
-        Returns:
-            List of published posts or PaginatedResponse if pagination provided
-
-        Example:
-            # Get all published posts
-            posts = post_repo.get_published_posts()
-
-            # Get paginated published posts
-            pagination = PaginationParams(page=1, page_size=20)
-            result = post_repo.get_published_posts(pagination)
-        """
-        if pagination:
-            return self.get_multi_paginated(
-                pagination=pagination,
-                filters={"status": PostStatus.PUBLISHED},
-                include_deleted=include_deleted,
-                order_by="created_at",
-                order_desc=True
-            )
-
-        return self.filter_by(
-            status=PostStatus.PUBLISHED,
-            include_deleted=include_deleted
-        )
-
-    def get_draft_posts(
-        self,
-        pagination: Optional[PaginationParams] = None,
-        include_deleted: bool = False
-    ) -> List[Post] | PaginatedResponse[Post]:
-        """
-        Get all draft posts, optionally paginated.
-
-        Uses filter_by() or get_multi_paginated() from BaseRepository.
-
-        Args:
-            pagination: Optional pagination parameters
-            include_deleted: If True, includes soft-deleted posts
-
-        Returns:
-            List of draft posts or PaginatedResponse if pagination provided
-
-        Example:
-            drafts = post_repo.get_draft_posts()
-        """
-        if pagination:
-            return self.get_multi_paginated(
-                pagination=pagination,
-                filters={"status": PostStatus.DRAFT},
-                include_deleted=include_deleted,
-                order_by="updated_at",
-                order_desc=True
-            )
-
-        return self.filter_by(
-            status=PostStatus.DRAFT,
-            include_deleted=include_deleted
-        )
+        return self.get_or_create(title=title, defaults=defaults)
 
     # ========================================================================
     # STATISTICS (use BaseRepository count method)

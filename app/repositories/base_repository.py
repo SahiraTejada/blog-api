@@ -15,7 +15,7 @@ Benefits:
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 from uuid import UUID
 
 from sqlalchemy import func, or_
@@ -40,6 +40,7 @@ ModelType = TypeVar("ModelType", bound=BaseModel)
 # ============================================================================
 # BASE REPOSITORY CLASS
 # ============================================================================
+
 
 class BaseRepository(Generic[ModelType]):
     """
@@ -89,11 +90,7 @@ class BaseRepository(Generic[ModelType]):
     # READ OPERATIONS
     # ========================================================================
 
-    def get(
-        self,
-        uuid: UUID,
-        include_deleted: bool = False
-    ) -> Optional[ModelType]:
+    def get_by_uuid(self, uuid: UUID, include_deleted: bool = False) -> Optional[ModelType]:
         """
         Retrieve a single record by its primary key (UUID).
 
@@ -124,133 +121,188 @@ class BaseRepository(Generic[ModelType]):
 
         return query.first()
 
-    def get_multi(
+    def get_by_text_field(
         self,
+        filters: Dict[str, Any],
+        case_insensitive: bool = True,
+        case_sensitive_fields: Optional[List[str]] = None,
         include_deleted: bool = False,
-        filters: Optional[Dict[str, Any]] = None,
-        order_by: Optional[str] = None,
-        order_desc: bool = False
-    ) -> List[ModelType]:
+    ) -> Optional[ModelType]:
         """
-        Retrieve all records matching the criteria with filtering and sorting.
+        Get a single record by filtering on specific fields.
 
-        This method fetches all matching records without pagination. For paginated
-        results, use get_multi_paginated() instead.
-
-        This is the main method for fetching collections of records. It supports:
-        - Soft delete filtering
-        - Dynamic field filtering
-        - Sorting
+        Similar to filter_by but returns only the first match and supports
+        case-insensitive searching for string fields with granular control.
 
         Args:
-            include_deleted: If True, includes soft-deleted records. Default is False.
-            filters: Dictionary of field-value pairs to filter by.
-                    Example: {"email": "test@example.com", "is_active": True}
-            order_by: Field name to sort by. Default is None (no specific ordering).
-            order_desc: If True, sorts in descending order. Default is False (ascending).
+            filters: Dictionary with field-value pairs to filter by
+            case_insensitive: If True, performs case-insensitive match for string fields.
+                            Default is True.
+            case_sensitive_fields: Optional list of field names that should be treated
+                                 as case-sensitive, overriding the case_insensitive parameter.
+            include_deleted: If True, includes soft-deleted records
 
         Returns:
-            List of all model instances matching the criteria
+            The first matching model instance, or None if not found
 
-        Warning:
-            This method returns ALL matching records without pagination.
-            For large datasets, consider using get_multi_paginated() to avoid
-            memory issues and improve performance.
+        Example:
+            # Case-insensitive username lookup (default)
+            user = user_repo.get_by_text_field({"username": "JohnDoe"})
 
-        Examples:
-            # Get all active records
-            all_users = user_repo.get_multi(filters={"is_active": True})
+            # All fields case-sensitive
+            user = user_repo.get_by_text_field(
+                {"username": "JohnDoe"},
+                case_insensitive=False
+            )
 
-            # Get all records sorted by creation date
-            users = user_repo.get_multi(order_by="created_at", order_desc=True)
+            # Mixed: username case-insensitive, email case-sensitive
+            user = user_repo.get_by_text_field(
+                {"username": "JohnDoe", "email": "john@example.com"},
+                case_insensitive=True,
+                case_sensitive_fields=["email"]
+            )
 
-            # For pagination, use get_multi_paginated instead:
-            from app.schemas.base import PaginationParams
-            pagination = PaginationParams(page=1, page_size=20)
-            paginated = user_repo.get_multi_paginated(pagination=pagination)
+            # Lookup by non-string field
+            user = user_repo.get_by_text_field({"id": 123})
+
+        Note:
+            Non-string values are always matched exactly, regardless of case_insensitive setting.
         """
         query = self.db.query(self.model)
 
-        # Apply soft delete filter
         if not include_deleted:
             query = query.filter(self.model.deleted_at.is_(None))
 
-        # Apply dynamic filters
-        if filters:
-            for field, value in filters.items():
-                # Check if the model has the specified field
-                if hasattr(self.model, field):
+        # Initialize case_sensitive_fields as empty list if None
+        sensitive_fields = case_sensitive_fields or []
+
+        # Apply filters
+        for field, value in filters.items():
+            if hasattr(self.model, field):
+                # Determine if this specific field should be case-insensitive
+                field_is_case_insensitive = case_insensitive and field not in sensitive_fields and isinstance(value, str)
+
+                if field_is_case_insensitive:
+                    # Case-insensitive match for string fields
+                    query = query.filter(func.lower(getattr(self.model, field)) == value.lower())
+                else:
+                    # Exact match for case-sensitive fields or non-strings
                     query = query.filter(getattr(self.model, field) == value)
 
-        # Apply sorting
-        if order_by and hasattr(self.model, order_by):
-            order_column = getattr(self.model, order_by)
-            if order_desc:
-                query = query.order_by(order_column.desc())
-            else:
-                query = query.order_by(order_column.asc())
+        return query.first()
 
-        return query.all()
-
-    def get_multi_paginated(
+    def get_multi(
         self,
-        pagination: PaginationParams,
+        pagination: Optional[PaginationParams] = None,
         include_deleted: bool = False,
         filters: Optional[Dict[str, Any]] = None,
+        search_fields: Optional[List[str]] = None,
+        search_term: Optional[str] = None,
         order_by: Optional[str] = None,
-        order_desc: bool = False
-    ) -> PaginatedResponse[Any]:
+        order_desc: bool = False,
+        base_query=None,
+    ) -> Union[List[ModelType], PaginatedResponse[ModelType]]:
         """
-        Retrieve multiple records with automatic pagination using PaginationParams.
+        Retrieve records matching the criteria with filtering, searching, and sorting.
 
-        This method returns a paginated response with both the data and pagination
-        metadata. It uses the pagination utilities to automatically calculate
-        all pagination information.
+        This is the main method for fetching collections of records. It supports:
+        - Custom base queries with JOINs (base_query parameter)
+        - Exact field filtering (filters parameter)
+        - Partial text search across multiple fields (search_fields + search_term)
+        - Combining both filters and search in the same query
+        - Soft delete filtering
+        - Sorting
+        - Optional pagination
 
         Args:
-            pagination: PaginationParams object with page and page_size
+            pagination: Optional PaginationParams object with page and page_size.
+                       If None, returns all matching records without pagination.
             include_deleted: If True, includes soft-deleted records. Default is False.
-            filters: Dictionary of field-value pairs to filter by.
+            filters: Dictionary of field-value pairs for exact matching.
+                    Example: {"status": "PUBLISHED", "is_active": True}
+            search_fields: List of field names to search in using partial matching.
+                          Only used if search_term is also provided.
+            search_term: Text to search for across search_fields using case-insensitive
+                        partial matching (SQL ILIKE). Only used if search_fields is provided.
             order_by: Field name to sort by. Default is None (no specific ordering).
             order_desc: If True, sorts in descending order. Default is False (ascending).
+            base_query: Optional pre-built query (useful for JOINs). If provided, this
+                       query is used as the base and filters/search are applied on top.
+                       If None, a standard query is created.
 
         Returns:
-            PaginatedResponse containing:
-                - data: List of model instances for the current page
-                - pagination: PaginationMeta with page info
+            If pagination is None: List of all model instances matching the criteria
+            If pagination is provided: PaginatedResponse with data and pagination metadata
 
-        Example:
-            pagination_params = PaginationParams(page=1, page_size=20)
-            result = user_repository.get_multi_paginated(
-                pagination=pagination_params,
+        Warning:
+            Without pagination, this method returns ALL matching records.
+            For large datasets, always provide pagination to avoid memory issues.
+
+        Examples:
+            # Exact filters only
+            active_users = user_repo.get_multi(filters={"is_active": True})
+
+            # Search only (replaces old search() method)
+            results = post_repo.get_multi(
+                search_fields=["title", "content"],
+                search_term="python"
+            )
+
+            # Combine filters + search
+            published_python_posts = post_repo.get_multi(
+                filters={"status": "PUBLISHED"},  # Exact match
+                search_fields=["title", "content"],  # Partial search
+                search_term="python"
+            )
+
+            # With custom query (JOINs)
+            base_query = db.query(Post).join(Post.categories).filter(
+                Category.uuid == category_uuid
+            )
+            results = post_repo.get_multi(
+                base_query=base_query,
+                filters={"status": "PUBLISHED"},
+                search_term="python",
+                search_fields=["title", "content"]
+            )
+
+            # With pagination
+            pagination = PaginationParams(page=1, page_size=20)
+            result = user_repo.get_multi(
+                pagination=pagination,
                 filters={"is_active": True},
+                search_fields=["name", "email"],
+                search_term="john",
                 order_by="created_at",
                 order_desc=True
             )
-
-            # Access data
             users = result.data
-
-            # Access pagination info
-            print(f"Page {result.pagination.page} of {result.pagination.total_pages}")
-            print(f"Total users: {result.pagination.total_items}")
-
-        Note:
-            This method automatically handles skip/limit calculation and
-            provides complete pagination metadata for the frontend.
+            total_pages = result.pagination.total_pages
         """
-        # Build query with filters and sorting
-        query = self.db.query(self.model)
+        # Use base_query if provided, otherwise create standard query
+        query = base_query if base_query is not None else self.db.query(self.model)
 
         # Apply soft delete filter
         if not include_deleted:
             query = query.filter(self.model.deleted_at.is_(None))
 
-        # Apply dynamic filters
+        # Apply exact filters
         if filters:
             for field, value in filters.items():
                 if hasattr(self.model, field):
                     query = query.filter(getattr(self.model, field) == value)
+
+        # Apply search conditions (partial matching)
+        if search_fields and search_term:
+            search_conditions = []
+            for field in search_fields:
+                if hasattr(self.model, field):
+                    # Use ilike for case-insensitive partial matching
+                    search_conditions.append(getattr(self.model, field).ilike(f"%{search_term}%"))
+
+            if search_conditions:
+                # Apply OR condition (match any of the search fields)
+                query = query.filter(or_(*search_conditions))
 
         # Apply sorting
         if order_by and hasattr(self.model, order_by):
@@ -260,14 +312,19 @@ class BaseRepository(Generic[ModelType]):
             else:
                 query = query.order_by(order_column.asc())
 
-        # Get total count before pagination
-        total_count = query.count()
+        # Return paginated or all results based on pagination parameter
+        if pagination:
+            # Get total count before pagination
+            total_count = query.count()
 
-        # Apply pagination
-        items = query.offset(pagination.skip).limit(pagination.limit).all()
+            # Apply pagination
+            items = query.offset(pagination.skip).limit(pagination.limit).all()
 
-        # Return paginated response
-        return paginate(items, pagination, total_count)
+            # Return paginated response
+            return paginate(items, pagination, total_count)
+        else:
+            # Return all matching records
+            return query.all()
 
     def get_all(self, include_deleted: bool = False) -> List[ModelType]:
         """
@@ -296,11 +353,7 @@ class BaseRepository(Generic[ModelType]):
 
         return query.all()
 
-    def count(
-        self,
-        include_deleted: bool = False,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> int:
+    def count(self, include_deleted: bool = False, filters: Optional[Dict[str, Any]] = None) -> int:
         """
         Count the total number of records matching the criteria.
 
@@ -330,11 +383,7 @@ class BaseRepository(Generic[ModelType]):
 
         return query.scalar() or 0
 
-    def exists(
-        self,
-        uuid: UUID,
-        include_deleted: bool = False
-    ) -> bool:
+    def exists(self, uuid: UUID, include_deleted: bool = False) -> bool:
         """
         Check if a record exists by its ID.
 
@@ -361,11 +410,7 @@ class BaseRepository(Generic[ModelType]):
 
         return query.first() is not None
 
-    def filter_by(
-        self,
-        include_deleted: bool = False,
-        **kwargs: Any
-    ) -> List[ModelType]:
+    def filter_by(self, include_deleted: bool = False, **kwargs: Any) -> List[ModelType]:
         """
         Filter records using keyword arguments.
 
@@ -513,11 +558,7 @@ class BaseRepository(Generic[ModelType]):
     # UPDATE OPERATIONS
     # ========================================================================
 
-    def update(
-        self,
-        uuid: UUID,
-        obj_in: Dict[str, Any]
-    ) -> Optional[ModelType]:
+    def update(self, uuid: UUID, obj_in: Dict[str, Any]) -> Optional[ModelType]:
         """
         Update an existing record.
 
@@ -552,7 +593,7 @@ class BaseRepository(Generic[ModelType]):
             - Returns None if the record doesn't exist or is soft-deleted
         """
         # Fetch the existing record
-        db_obj = self.get(uuid)
+        db_obj = self.get_by_uuid(uuid)
 
         if not db_obj:
             return None
@@ -578,11 +619,7 @@ class BaseRepository(Generic[ModelType]):
             self.db.rollback()
             raise e
 
-    def update_multi(
-        self,
-        filters: Dict[str, Any],
-        obj_in: Dict[str, Any]
-    ) -> int:
+    def update_multi(self, filters: Dict[str, Any], obj_in: Dict[str, Any]) -> int:
         """
         Update multiple records matching the specified filters.
 
@@ -640,11 +677,7 @@ class BaseRepository(Generic[ModelType]):
     # DELETE OPERATIONS
     # ========================================================================
 
-    def delete(
-        self,
-        uuid: UUID,
-        hard_delete: bool = False
-    ) -> bool:
+    def delete(self, uuid: UUID, hard_delete: bool = False) -> bool:
         """
         Delete a record (soft delete by default).
 
@@ -679,7 +712,7 @@ class BaseRepository(Generic[ModelType]):
         Note:
             Soft-deleted records can be restored using restore() method.
         """
-        db_obj = self.get(uuid)
+        db_obj = self.get_by_uuid(uuid)
 
         if not db_obj:
             return False
@@ -690,7 +723,7 @@ class BaseRepository(Generic[ModelType]):
                 self.db.delete(db_obj)
             else:
                 # Soft delete: just set the deleted_at timestamp
-                setattr(db_obj, 'deleted_at', datetime.now(timezone.utc))
+                setattr(db_obj, "deleted_at", datetime.now(timezone.utc))
 
             self.db.commit()
             return True
@@ -702,11 +735,7 @@ class BaseRepository(Generic[ModelType]):
             self.db.rollback()
             raise e
 
-    def delete_multi(
-        self,
-        filters: Dict[str, Any],
-        hard_delete: bool = False
-    ) -> int:
+    def delete_multi(self, filters: Dict[str, Any], hard_delete: bool = False) -> int:
         """
         Delete multiple records matching the specified filters.
 
@@ -744,10 +773,7 @@ class BaseRepository(Generic[ModelType]):
             if hard_delete:
                 count = query.delete(synchronize_session=False)
             else:
-                count = query.update(
-                    {"deleted_at": datetime.now(timezone.utc)},
-                    synchronize_session=False
-                )
+                count = query.update({"deleted_at": datetime.now(timezone.utc)}, synchronize_session=False)
 
             self.db.commit()
             return count
@@ -787,14 +813,14 @@ class BaseRepository(Generic[ModelType]):
             cannot be restored.
         """
         # Look for the record including deleted ones
-        db_obj = self.get(uuid, include_deleted=True)
+        db_obj = self.get_by_uuid(uuid, include_deleted=True)
 
         if not db_obj or db_obj.deleted_at is None:
             return False
 
         try:
             # Clear the deleted_at timestamp
-            setattr(db_obj, 'deleted_at', None)
+            setattr(db_obj, "deleted_at", None)
             self.db.commit()
             return True
 
@@ -806,145 +832,7 @@ class BaseRepository(Generic[ModelType]):
     # ADVANCED QUERY OPERATIONS
     # ========================================================================
 
-    def search(
-        self,
-        search_fields: List[str],
-        search_term: str,
-        include_deleted: bool = False
-    ) -> List[ModelType]:
-        """
-        Search for all records where any of the specified fields contain the search term.
-
-        This performs a case-insensitive partial match on text fields and returns
-        ALL matching records. For paginated search results, use search_paginated().
-
-        Args:
-            search_fields: List of field names to search in
-            search_term: The text to search for
-            include_deleted: If True, includes soft-deleted records
-
-        Returns:
-            List of all model instances matching the search criteria
-
-        Warning:
-            This method returns ALL matching records without pagination.
-            For large result sets, use search_paginated() instead.
-
-        Example:
-            # Search for all users by name or email
-            results = user_repository.search(
-                search_fields=["name", "email"],
-                search_term="john"
-            )
-
-            # For paginated search:
-            from app.schemas.base import PaginationParams
-            pagination = PaginationParams(page=1, page_size=20)
-            paginated = user_repository.search_paginated(
-                search_fields=["name", "email"],
-                search_term="john",
-                pagination=pagination
-            )
-
-        Note:
-            This uses SQL ILIKE operator for case-insensitive pattern matching.
-            For large datasets, consider using full-text search or search engines.
-        """
-        query = self.db.query(self.model)
-
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
-
-        # Build OR conditions for all search fields
-        search_conditions = []
-        for field in search_fields:
-            if hasattr(self.model, field):
-                # Use ilike for case-insensitive partial matching
-                # The % wildcards allow matching anywhere in the field
-                search_conditions.append(
-                    getattr(self.model, field).ilike(f"%{search_term}%")
-                )
-
-        if search_conditions:
-            # Apply OR condition (match any of the fields)
-            query = query.filter(or_(*search_conditions))
-
-        return query.all()
-
-    def search_paginated(
-        self,
-        search_fields: List[str],
-        search_term: str,
-        pagination: PaginationParams,
-        include_deleted: bool = False
-    ) -> PaginatedResponse[Any]:
-        """
-        Search for records with automatic pagination.
-
-        This method performs a case-insensitive partial match on text fields
-        and returns a paginated response with metadata.
-
-        Args:
-            search_fields: List of field names to search in
-            search_term: The text to search for
-            pagination: PaginationParams object with page and page_size
-            include_deleted: If True, includes soft-deleted records
-
-        Returns:
-            PaginatedResponse containing:
-                - data: List of matching model instances for current page
-                - pagination: PaginationMeta with page info
-
-        Example:
-            pagination_params = PaginationParams(page=1, page_size=20)
-            result = user_repository.search_paginated(
-                search_fields=["name", "email"],
-                search_term="john",
-                pagination=pagination_params
-            )
-
-            # Access data
-            matching_users = result.data
-
-            # Access pagination info
-            print(f"Found {result.pagination.total_items} matching users")
-            print(f"Showing page {result.pagination.page}")
-
-        Note:
-            This uses SQL ILIKE operator for case-insensitive pattern matching.
-            For large datasets, consider using full-text search.
-        """
-        # Build query
-        query = self.db.query(self.model)
-
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
-
-        # Build search conditions
-        search_conditions = []
-        for field in search_fields:
-            if hasattr(self.model, field):
-                search_conditions.append(
-                    getattr(self.model, field).ilike(f"%{search_term}%")
-                )
-
-        if search_conditions:
-            query = query.filter(or_(*search_conditions))
-
-        # Get total count before pagination
-        total_count = query.count()
-
-        # Apply pagination and get items
-        items = query.offset(pagination.skip).limit(pagination.limit).all()
-
-        # Return paginated response
-        return paginate(items, pagination, total_count)
-
-    def get_or_create(
-        self,
-        defaults: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
-    ) -> tuple[ModelType, bool]:
+    def get_or_create(self, defaults: Optional[Dict[str, Any]] = None, **kwargs: Any) -> tuple[ModelType, bool]:
         """
         Get an existing record or create a new one if it doesn't exist.
 
@@ -1007,9 +895,7 @@ class BaseRepository(Generic[ModelType]):
             raise e
 
     def bulk_create_or_update(
-        self,
-        objs_in: List[Dict[str, Any]],
-        match_fields: List[str]
+        self, objs_in: List[Dict[str, Any]], match_fields: List[str]
     ) -> tuple[List[ModelType], int, int]:
         """
         Bulk upsert operation: create new records or update existing ones.
@@ -1052,11 +938,7 @@ class BaseRepository(Generic[ModelType]):
         try:
             for obj_data in objs_in:
                 # Build match filters from specified fields
-                match_filters = {
-                    field: obj_data[field]
-                    for field in match_fields
-                    if field in obj_data
-                }
+                match_filters = {field: obj_data[field] for field in match_fields if field in obj_data}
 
                 # Try to find existing record
                 existing = self.filter_by(**match_filters)

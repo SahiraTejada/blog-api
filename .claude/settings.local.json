@@ -10,7 +10,8 @@
       "Bash(python -m flake8:*)",
       "Bash(python -c:*)",
       "Bash(python -m isort:*)",
-      "Bash(python -m mypy:*)"
+      "Bash(python -m mypy:*)",
+      "Bash(python -m py_compile:*)"
     ],
     "deny": [],
     "ask": []

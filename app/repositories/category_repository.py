@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 from uuid import UUID
 
 from sqlalchemy import func
@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.models import Category, Post
 from app.repositories.base_repository import BaseRepository
-from app.schemas.base import PaginatedResponse, PaginationParams
+from app.schemas.base import PaginationParams
+from app.utils.pagination import PaginatedResponse
 
 
 class CategoryRepository(BaseRepository[Category]):
@@ -43,14 +44,8 @@ class CategoryRepository(BaseRepository[Category]):
         Example:
             category = category_repo.get_by_name("Technology")
         """
-        query = self.db.query(self.model).filter(
-            func.lower(self.model.name) == name.lower()
-        )
 
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
-
-        return query.first()
+        return self.get_by_text_field({"name": name}, include_deleted=include_deleted)
 
     def get_categories_with_post_count(
         self,
@@ -120,7 +115,11 @@ class CategoryRepository(BaseRepository[Category]):
 
         return query.all()
 
-    def get_active_categories(self) -> List[Category]:
+    def get_all_categories(self,
+                           include_deleted: bool = False,
+                           search_term: Optional[str] = None,
+                           pagination: Optional[PaginationParams] = None,
+                           ) -> Union[List[Category], PaginatedResponse[Category]]:
         """
         Get all active (non-deleted) categories ordered by name.
 
@@ -132,70 +131,15 @@ class CategoryRepository(BaseRepository[Category]):
         Example:
             categories = category_repo.get_active_categories()
         """
+        search_fields = ["name", "description"] if search_term else None
+
         return self.get_multi(
-            include_deleted=False,
+            include_deleted=include_deleted,
             order_by="name",
-            order_desc=False
-        )
-
-    # ========================================================================
-    # SEARCH METHODS (use BaseRepository methods)
-    # ========================================================================
-
-    def search_categories(
-        self,
-        search_term: str,
-        include_deleted: bool = False
-    ) -> List[Category]:
-        """
-        Search categories by name or description.
-
-        Uses search() from BaseRepository.
-
-        Args:
-            search_term: Text to search for
-            include_deleted: If True, includes soft-deleted categories
-
-        Returns:
-            List of all matching category instances
-
-        Example:
-            categories = category_repo.search_categories("tech")
-        """
-        return self.search(
-            search_fields=["name", "description"],
-            search_term=search_term,
-            include_deleted=include_deleted
-        )
-
-    def search_categories_paginated(
-        self,
-        search_term: str,
-        pagination: PaginationParams,
-        include_deleted: bool = False
-    ) -> PaginatedResponse[Category]:
-        """
-        Search categories with pagination.
-
-        Uses search_paginated() from BaseRepository.
-
-        Args:
-            search_term: Text to search for
-            pagination: PaginationParams with page and page_size
-            include_deleted: If True, includes soft-deleted categories
-
-        Returns:
-            PaginatedResponse with matching categories and pagination metadata
-
-        Example:
-            pagination = PaginationParams(page=1, page_size=20)
-            result = category_repo.search_categories_paginated("tech", pagination)
-        """
-        return self.search_paginated(
-            search_fields=["name", "description"],
+            search_fields=search_fields,
             search_term=search_term,
             pagination=pagination,
-            include_deleted=include_deleted
+            order_desc=False
         )
 
     # ========================================================================
@@ -344,7 +288,7 @@ class CategoryRepository(BaseRepository[Category]):
         Example:
             count = category_repo.get_category_post_count(category_uuid)
         """
-        category = self.get(category_uuid)
+        category = self.get_by_uuid(category_uuid)
         if not category:
             return 0
 
