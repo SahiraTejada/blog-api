@@ -28,8 +28,8 @@ from app.schemas.base import (
 
 # User schemas
 from app.schemas.user import (
-    UserPublicSchema,
     UserBaseSchema,
+    UserPublicSchema,
     UserResponseSchema,
     UserUpdateSchema,
 )
