@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Category, Post
 from app.repositories.base_repository import BaseRepository
-from app.schemas.base import  PaginationParams
+from app.schemas.base import PaginationParams
 
 
 class CategoryRepository(BaseRepository[Category]):
