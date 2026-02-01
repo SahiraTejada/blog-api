@@ -82,7 +82,6 @@ class PostRepository(BaseRepository[Post]):
         Example:
             post = post_repo.get_by_title("My First Post")
         """
-
         return self.get_by_text_field({"title": title}, include_deleted=include_deleted)
 
     # ========================================================================
@@ -139,7 +138,6 @@ class PostRepository(BaseRepository[Post]):
                 pagination=pagination
             )
         """
-
         filters: Dict[str, Any] = {}
         if status:
             filters["status"] = status

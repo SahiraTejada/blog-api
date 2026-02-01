@@ -307,7 +307,6 @@ class TokenRepository(BaseRepository[Token]):
             deleted = token_repo.cleanup_expired()
             logger.info(f"Cleaned up {deleted} expired tokens")
         """
-
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=older_than_days)
 
         # Find expired tokens

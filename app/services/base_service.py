@@ -45,6 +45,7 @@ class BaseService(Generic[ModelType]):
     """
 
     def __init__(self, repo: BaseRepository[ModelType]):
+        """Initialize BaseService with a repository instance."""
         self.repo = repo
 
     # ========================================================================

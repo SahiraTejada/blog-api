@@ -44,7 +44,6 @@ class CategoryRepository(BaseRepository[Category]):
         Example:
             category = category_repo.get_by_name("Technology")
         """
-
         return self.get_by_text_field({"name": name}, include_deleted=include_deleted)
 
     def get_categories_with_post_count(
