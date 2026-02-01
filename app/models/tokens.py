@@ -22,6 +22,7 @@ class TokenType(str, enum.Enum):
     - RESET_PASSWORD: Token for password reset emails
     - EMAIL_VERIFICATION: Token for email verification
     """
+
     ACCESS = "access"
     REFRESH = "refresh"
     RESET_PASSWORD = "reset_password"

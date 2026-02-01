@@ -23,6 +23,7 @@ class PostStatus(enum.Enum):
     - DRAFT: Post is not published yet
     - PUBLISHED: Post is publicly visible
     """
+
     DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"
 

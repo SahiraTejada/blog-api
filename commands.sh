@@ -40,7 +40,10 @@
 # Check Import Sorting (validate only, exit with error if not sorted)
     isort . --profile black --line-length 127 --check-only --diff
 
-# Flak 8
+# Flake 8
+
+## Run flake8 linter
+    flake8 app/ --max-line-length 127
 
 ## Automatically fix all whitespace errors
 autopep8 --in-place --recursive --select=W291,W292,W293 .  
