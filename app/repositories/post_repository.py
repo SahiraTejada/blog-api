@@ -179,11 +179,10 @@ class PostRepository(BaseRepository[Post]):
             if post_repo.title_exists("My Post"):
                 raise HTTPException(409, "Title already taken")
         """
-        query = (
-            self.db.query(self.model.uuid)
-            .filter(func.lower(self.model.title) == title.lower())
-            .filter(self.model.deleted_at.is_(None))
+        query = self.db.query(self.model.uuid).filter(
+            func.lower(self.model.title) == title.lower()
         )
+        query = self._apply_soft_delete_filter(query)
 
         if exclude_uuid:
             query = query.filter(self.model.uuid != exclude_uuid)

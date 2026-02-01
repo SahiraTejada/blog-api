@@ -417,6 +417,6 @@ class TokenRepository(BaseRepository[Token]):
             if token_repo.token_exists(token_string):
                 raise HTTPException(409, "Token already exists")
         """
-        return self.db.query(self.model.uuid).filter(
-            self.model.token == token
-        ).filter(self.model.deleted_at.is_(None)).first() is not None
+        query = self.db.query(self.model.uuid).filter(self.model.token == token)
+        query = self._apply_soft_delete_filter(query)
+        return query.first() is not None

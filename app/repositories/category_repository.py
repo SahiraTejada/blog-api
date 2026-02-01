@@ -71,9 +71,7 @@ class CategoryRepository(BaseRepository[Category]):
         ).outerjoin(
             self.model.posts
         ).group_by(self.model.uuid)
-
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
+        query = self._apply_soft_delete_filter(query, include_deleted)
 
         results = query.all()
         return [(category, count) for category, count in results]
@@ -106,9 +104,7 @@ class CategoryRepository(BaseRepository[Category]):
         ).order_by(
             func.count(Post.uuid).desc()
         )
-
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
+        query = self._apply_soft_delete_filter(query, include_deleted)
 
         if limit:
             query = query.limit(limit)
@@ -261,7 +257,8 @@ class CategoryRepository(BaseRepository[Category]):
         """
         query = self.db.query(self.model.uuid).filter(
             func.lower(self.model.name) == name.lower()
-        ).filter(self.model.deleted_at.is_(None))
+        )
+        query = self._apply_soft_delete_filter(query)
 
         if exclude_uuid:
             query = query.filter(self.model.uuid != exclude_uuid)
@@ -318,8 +315,7 @@ class CategoryRepository(BaseRepository[Category]):
             self.model.uuid
         ).having(
             func.count(Post.uuid) == 0
-        ).filter(
-            self.model.deleted_at.is_(None)
         )
+        query = self._apply_soft_delete_filter(query)
 
         return query.all()

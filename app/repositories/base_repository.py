@@ -15,27 +15,16 @@ Benefits:
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, Type, Union
 from uuid import UUID
 
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models.base import BaseModel
+from app.models.base import ModelType
 from app.schemas.base import PaginationParams
 from app.utils.pagination import PaginatedResponse, paginate
-
-# ======================== , ====================================================
-# TYPE VARIABLES
-# ============================================================================
-# TypeVar allows us to create generic classes that work with any model type.
-# This enables type safety while maintaining flexibility.
-
-ModelType = TypeVar("ModelType", bound=BaseModel)
-# ModelType is bound to BaseModel, meaning it must be a subclass of BaseModel.
-# This ensures our repository only works with valid database models.
-
 
 # ============================================================================
 # BASE REPOSITORY CLASS
@@ -114,10 +103,7 @@ class BaseRepository(Generic[ModelType]):
 
         """
         query = self.db.query(self.model).filter(self.model.uuid == uuid)
-
-        # Apply soft delete filter unless explicitly requested to include deleted
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
+        query = self._apply_soft_delete_filter(query, include_deleted)
 
         return query.first()
 
@@ -169,9 +155,7 @@ class BaseRepository(Generic[ModelType]):
             Non-string values are always matched exactly, regardless of case_insensitive setting.
         """
         query = self.db.query(self.model)
-
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
+        query = self._apply_soft_delete_filter(query, include_deleted)
 
         # Initialize case_sensitive_fields as empty list if None
         sensitive_fields = case_sensitive_fields or []
@@ -281,10 +265,7 @@ class BaseRepository(Generic[ModelType]):
         """
         # Use base_query if provided, otherwise create standard query
         query = base_query if base_query is not None else self.db.query(self.model)
-
-        # Apply soft delete filter
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
+        query = self._apply_soft_delete_filter(query, include_deleted)
 
         # Apply exact filters
         if filters:
@@ -347,9 +328,7 @@ class BaseRepository(Generic[ModelType]):
             to avoid loading too much data into memory.
         """
         query = self.db.query(self.model)
-
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
+        query = self._apply_soft_delete_filter(query, include_deleted)
 
         return query.all()
 
@@ -372,9 +351,7 @@ class BaseRepository(Generic[ModelType]):
             total_pages = (total_users + page_size - 1) // page_size
         """
         query = self.db.query(func.count(self.model.uuid))
-
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
+        query = self._apply_soft_delete_filter(query, include_deleted)
 
         if filters:
             for field, value in filters.items():
@@ -404,9 +381,7 @@ class BaseRepository(Generic[ModelType]):
                 print("User not found")
         """
         query = self.db.query(self.model.uuid).filter(self.model.uuid == uuid)
-
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
+        query = self._apply_soft_delete_filter(query, include_deleted)
 
         return query.first() is not None
 
@@ -435,9 +410,7 @@ class BaseRepository(Generic[ModelType]):
             This performs an AND operation on all filters (all must match).
         """
         query = self.db.query(self.model)
-
-        if not include_deleted:
-            query = query.filter(self.model.deleted_at.is_(None))
+        query = self._apply_soft_delete_filter(query, include_deleted)
 
         # Apply each filter
         for field, value in kwargs.items():
@@ -656,8 +629,7 @@ class BaseRepository(Generic[ModelType]):
                 if hasattr(self.model, field):
                     query = query.filter(getattr(self.model, field) == value)
 
-            # Exclude soft-deleted records
-            query = query.filter(self.model.deleted_at.is_(None))
+            query = self._apply_soft_delete_filter(query)
 
             # Add updated_at timestamp
             update_values = {**obj_in, "updated_at": datetime.now(timezone.utc)}
@@ -767,8 +739,7 @@ class BaseRepository(Generic[ModelType]):
                 if hasattr(self.model, field):
                     query = query.filter(getattr(self.model, field) == value)
 
-            # Don't delete already deleted records
-            query = query.filter(self.model.deleted_at.is_(None))
+            query = self._apply_soft_delete_filter(query)
 
             if hard_delete:
                 count = query.delete(synchronize_session=False)
@@ -960,7 +931,7 @@ class BaseRepository(Generic[ModelType]):
             self.db.commit()
 
             # Refresh all new objects
-            for obj in instances[len(instances) - created_count:]:
+            for obj in instances[len(instances) - created_count :]:
                 self.db.refresh(obj)
 
             return instances, created_count, updated_count
@@ -1017,6 +988,16 @@ class BaseRepository(Generic[ModelType]):
         """
         self.db.expunge(db_obj)
         return db_obj
+
+    # ========================================================================
+    # PRIVATE HELPERS
+    # ========================================================================
+
+    def _apply_soft_delete_filter(self, query: Any, include_deleted: bool = False) -> Any:
+        """Apply soft delete filter to a query unless include_deleted is True."""
+        if not include_deleted:
+            return query.filter(self.model.deleted_at.is_(None))
+        return query
 
     def __repr__(self) -> str:
         """

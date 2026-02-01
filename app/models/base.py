@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, TypeVar
 from uuid import UUID as UUID_TYPE
 from uuid import uuid4
 
@@ -46,3 +46,14 @@ class BaseModel(Base):
     def __repr__(self) -> str:
         """Return string representation of the model."""
         return f"<{self.__class__.__name__}(uuid={self.uuid})>"
+
+
+# ============================================================================
+# TYPE VARIABLES
+# ============================================================================
+# TypeVar allows us to create generic classes that work with any model type.
+# This enables type safety while maintaining flexibility.
+
+ModelType = TypeVar("ModelType", bound=BaseModel)
+# ModelType is bound to BaseModel, meaning it must be a subclass of BaseModel.
+# This ensures our repository only works with valid database models.
