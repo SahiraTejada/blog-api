@@ -23,6 +23,7 @@ class UserRole(enum.Enum):
 
     Note: GUEST users are unauthenticated visitors (no database row).
     """
+
     USER = "USER"
     ADMIN = "ADMIN"
 

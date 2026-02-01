@@ -38,7 +38,6 @@ class UserRepository(BaseRepository[User]):
         Example:
             user = user_repo.get_by_username("johndoe")
         """
-
         return self.get_by_text_field({"username": username}, include_deleted=include_deleted)
 
     def get_by_email(self, email: str, include_deleted: bool = False) -> Optional[User]:
