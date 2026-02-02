@@ -1,5 +1,5 @@
 import enum
-from typing import TYPE_CHECKING, List
+from typing import  List
 from uuid import UUID as UUID_TYPE
 
 from sqlalchemy import Enum, ForeignKey, String, Text
@@ -9,11 +9,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseModel
 from app.models.categories import post_categories
 
-if TYPE_CHECKING:
-    from app.models.categories import Category
-    from app.models.comments import Comments
-    from app.models.likes import Likes
-    from app.models.users import User
+from app.models.categories import Category
+from app.models.comments import Comments
+from app.models.likes import Likes
+from app.models.users import User
 
 
 class PostStatus(enum.Enum):

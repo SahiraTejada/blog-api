@@ -6,8 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
 
-if TYPE_CHECKING:
-    from app.models.posts import Post
+from app.models.posts import Post
 
 post_categories = Table(
     'post_categories',
