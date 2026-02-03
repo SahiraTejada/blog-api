@@ -120,6 +120,7 @@ class CategoryWithPostCountResponse(CategoryResponse):
         }
     }
 
+
 class CategoryListRequest(PaginationParams):
     """
     Request schema for listing categories with pagination and search.
@@ -131,6 +132,7 @@ class CategoryListRequest(PaginationParams):
         description="Optional search term to filter categories by name",
         json_schema_extra={"example": "tech"},
     )
+
 
 class CategoryListResponse(PaginatedResponse[CategoryResponse]):
     """
