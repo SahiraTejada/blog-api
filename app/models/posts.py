@@ -1,5 +1,5 @@
 import enum
-from typing import  List
+from typing import List
 from uuid import UUID as UUID_TYPE
 
 from sqlalchemy import Enum, ForeignKey, String, Text
@@ -7,9 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
-from app.models.categories import post_categories
-
-from app.models.categories import Category
+from app.models.categories import Category, post_categories
 from app.models.comments import Comments
 from app.models.likes import Likes
 from app.models.users import User
