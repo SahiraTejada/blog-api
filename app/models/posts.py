@@ -1,16 +1,26 @@
 import enum
-from typing import List
+from typing import TYPE_CHECKING, List
 from uuid import UUID as UUID_TYPE
 
-from sqlalchemy import Enum, ForeignKey, String, Text
+from sqlalchemy import Column, Enum, ForeignKey, String, Table, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
-from app.models.categories import Category, post_categories
-from app.models.comments import Comments
-from app.models.likes import Likes
-from app.models.users import User
+
+if TYPE_CHECKING:
+    from app.models.categories import Category
+    from app.models.comments import Comments
+    from app.models.likes import Likes
+    from app.models.users import User
+
+
+post_categories: Table = Table(
+    "post_categories",
+    BaseModel.metadata,
+    Column("post_uuid", UUID(as_uuid=True), ForeignKey("posts.uuid"), primary_key=True),
+    Column("category_uuid", UUID(as_uuid=True), ForeignKey("categories.uuid"), primary_key=True),
+)
 
 
 class PostStatus(enum.Enum):
