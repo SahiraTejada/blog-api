@@ -119,6 +119,7 @@ def validate_password(password: str, field_name: str = "Password") -> str:
 
 ImageFormat = Literal["jpg", "jpeg", "png", "gif", "webp", "svg", "ico", "bmp", "avif"]
 
+
 def validate_image_url(
     url: str, allowed_formats: Optional[list[str]] = None, require_https: bool = False, max_length: int = 2048
 ) -> tuple[bool, Optional[str]]:
@@ -141,7 +142,6 @@ def validate_image_url(
         >>> validate_image_url("http://example.com/image.pdf")
         (False, "Invalid image format. Must end with: .jpg, .jpeg, .png...")
     """
-
     # Validation 1: URL is not empty
     if not url or not url.strip():
         return False, "Image URL cannot be empty"
