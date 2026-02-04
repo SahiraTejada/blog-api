@@ -59,6 +59,7 @@ snowballstemmer==3.0.1
 SQLAlchemy==2.0.41
 starlette==0.50.0
 typer==0.19.2
+passlib[bcrypt]==1.7.4
 types-passlib==1.7.7.20250602
 typing-inspection==0.4.2
 typing_extensions==4.15.0
