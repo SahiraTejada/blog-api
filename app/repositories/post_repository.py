@@ -62,7 +62,12 @@ class PostRepository(BaseRepository[Post]):
                 pagination=PaginationParams(page=1, page_size=20)
             )
         """
-        return self.get_posts(author_uuid=author_uuid, status=status, include_deleted=include_deleted, pagination=pagination)
+        return self.get_posts(
+            author_uuid=author_uuid,
+            status=status,
+            include_deleted=include_deleted,
+            pagination=pagination,
+        )
 
     def get_by_title(
         self,
