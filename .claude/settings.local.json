@@ -11,7 +11,8 @@
       "Bash(python -c:*)",
       "Bash(python -m isort:*)",
       "Bash(python -m mypy:*)",
-      "Bash(python -m py_compile:*)"
+      "Bash(python -m py_compile:*)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []
