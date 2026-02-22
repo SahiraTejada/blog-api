@@ -18,32 +18,32 @@ All exceptions inherit from AppException and include:
     - details: Optional additional information
 """
 
-from app.core.exceptions.base import AppException
-from app.core.exceptions.common import (
-    NotFoundException,
-    ConflictException,
-    ValidationException,
-    ForbiddenException,
-    BadRequestException,
-    RateLimitException,
-)
 from app.core.exceptions.auth import (
     AuthenticationException,
     InvalidCredentialsException,
-    TokenExpiredException,
-    TokenInvalidException,
-    TokenRevokedException,
-    TokenNotFoundException,
-    TokenMissingException,
     InvalidTokenTypeException,
     MaxSessionsExceededException,
+    TokenExpiredException,
+    TokenInvalidException,
+    TokenMissingException,
+    TokenNotFoundException,
+    TokenRevokedException,
+)
+from app.core.exceptions.base import AppException
+from app.core.exceptions.common import (
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+    RateLimitException,
+    ValidationException,
 )
 from app.core.exceptions.user import (
-    UserNotFoundException,
-    UsernameExistsException,
     EmailExistsException,
     PasswordIncorrectException,
     UserInactiveException,
+    UsernameExistsException,
+    UserNotFoundException,
 )
 
 __all__ = [
