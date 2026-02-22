@@ -25,7 +25,6 @@ from pydantic import Field
 from app.models.tokens import TokenType
 from app.schemas.base import BaseSchema, CreateSchema, ResponseSchema, UpdateSchema
 
-
 # ============================================================================
 # INTERNAL SCHEMAS (for service/repository use)
 # ============================================================================
