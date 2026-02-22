@@ -28,10 +28,15 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import jwt
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.exceptions import (
+    InvalidTokenTypeException,
+    TokenExpiredException,
+    TokenInvalidException,
+    TokenNotFoundException,
+)
 from app.models.tokens import Token, TokenType
 from app.repositories.token_repository import TokenRepository
 from app.services.base_service import BaseService
@@ -309,7 +314,10 @@ class TokenService(BaseService[Token]):
             Token: The validated token model instance
 
         Raises:
-            HTTPException 401: If token is invalid, expired, or revoked
+            TokenExpiredException: If token has expired
+            TokenInvalidException: If token is malformed or signature invalid
+            InvalidTokenTypeException: If token type doesn't match expected
+            TokenNotFoundException: If token not found or revoked
 
         Example:
             # In authentication middleware
@@ -320,7 +328,7 @@ class TokenService(BaseService[Token]):
                 )
                 # Token is valid, get user_uuid from token
                 user_uuid = token.user_uuid
-            except HTTPException:
+            except AppException:
                 # Token is invalid
                 raise
         """
@@ -333,27 +341,18 @@ class TokenService(BaseService[Token]):
             )
         except jwt.ExpiredSignatureError:
             # Token has expired according to JWT exp claim
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has expired",
-                headers={"WWW-Authenticate": "Bearer"}
-            )
+            raise TokenExpiredException()
         except jwt.InvalidTokenError:
             # Token is malformed or signature is invalid
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token",
-                headers={"WWW-Authenticate": "Bearer"}
-            )
+            raise TokenInvalidException()
 
         # Step 2: Verify token type matches expected type (if specified)
         if expected_type:
             token_type_from_jwt = payload.get("type")
             if token_type_from_jwt != expected_type.value:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=f"Invalid token type. Expected {expected_type.value}",
-                    headers={"WWW-Authenticate": "Bearer"}
+                raise InvalidTokenTypeException(
+                    expected=expected_type.value,
+                    received=token_type_from_jwt
                 )
 
         # Step 3: Check token exists in database and is valid
@@ -361,11 +360,7 @@ class TokenService(BaseService[Token]):
         token = self.token_repo.get_valid_token(token_string, expected_type)
 
         if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token not found or has been revoked",
-                headers={"WWW-Authenticate": "Bearer"}
-            )
+            raise TokenNotFoundException()
 
         return token
 
@@ -382,7 +377,9 @@ class TokenService(BaseService[Token]):
             Token: The validated token model instance
 
         Raises:
-            HTTPException 401: If token is invalid
+            TokenExpiredException: If token has expired
+            TokenInvalidException: If token is invalid
+            InvalidTokenTypeException: If not an access token
 
         Example:
             # In protected route dependency
@@ -404,7 +401,9 @@ class TokenService(BaseService[Token]):
             Token: The validated token model instance
 
         Raises:
-            HTTPException 401: If token is invalid
+            TokenExpiredException: If token has expired
+            TokenInvalidException: If token is invalid
+            InvalidTokenTypeException: If not a refresh token
 
         Example:
             # In token refresh endpoint
