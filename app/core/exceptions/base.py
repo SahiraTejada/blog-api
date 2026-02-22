@@ -38,13 +38,14 @@ class AppException(Exception):
     message: str = "An error occurred"
     code: ErrorCode = ErrorCode.INTERNAL_ERROR
     status_code: int = 500
+    details: Dict[str, Any] = {}
 
     def __init__(
         self,
         message: Optional[str] = None,
         code: Optional[ErrorCode] = None,
         status_code: Optional[int] = None,
-        details: Optional[Dict[str, Any]] = None
+        details: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize the exception.
@@ -55,10 +56,16 @@ class AppException(Exception):
             status_code: Override default HTTP status code
             details: Additional context information
         """
-        self.message = message or self.message
-        self.code = code or self.code
-        self.status_code = status_code or self.status_code
-        self.details = details or {}
+        if message is not None:
+            self.message = message
+        if code is not None:
+            self.code = code
+        if status_code is not None:
+            self.status_code = status_code
+        if details is not None:
+            self.details = details
+
+        # Pass message to Exception base class for pickle/copy compatibility
         super().__init__(self.message)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -73,8 +80,8 @@ class AppException(Exception):
             "error": {
                 "code": self.code.value if isinstance(self.code, ErrorCode) else self.code,
                 "message": self.message,
-                "details": self.details
-            }
+                "details": self.details,
+            },
         }
 
     def __repr__(self) -> str:

@@ -30,7 +30,7 @@ class NotFoundException(AppException):
         resource: str = "Resource",
         identifier: Optional[str] = None,
         message: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None
+        details: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize not found exception.
