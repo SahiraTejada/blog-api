@@ -71,7 +71,7 @@ class TokenRepository(BaseRepository[Token]):
         query = self.db.query(self.model).filter(
             and_(
                 self.model.token == token,
-                self.model.revoked.is_(False),
+                self.model.revoked_at.is_(None),
                 self.model.deleted_at.is_(None),
                 self.model.expires_at > datetime.now(timezone.utc)
             )
@@ -125,7 +125,7 @@ class TokenRepository(BaseRepository[Token]):
         # Filter by revoked/expired status
         result = []
         for token in tokens:
-            if not include_revoked and token.revoked:
+            if not include_revoked and token.is_revoked:
                 continue
             if not include_expired and token.is_expired:
                 continue
@@ -195,9 +195,8 @@ class TokenRepository(BaseRepository[Token]):
         if hard_delete:
             return self.delete(token_obj.uuid, hard_delete=True)
         else:
-            # Mark as revoked
+            # Mark as revoked by setting revoked_at timestamp
             self.update(token_obj.uuid, {
-                "revoked": True,
                 "revoked_at": datetime.now(timezone.utc)
             })
             return True
@@ -244,10 +243,7 @@ class TokenRepository(BaseRepository[Token]):
             if except_token and token.token == except_token:
                 continue
 
-            self.update(token.uuid, {
-                "revoked": True,
-                "revoked_at": now
-            })
+            self.update(token.uuid, {"revoked_at": now})
             count += 1
 
         return count
@@ -349,7 +345,7 @@ class TokenRepository(BaseRepository[Token]):
 
         revoked_tokens = self.db.query(self.model).filter(
             and_(
-                self.model.revoked.is_(True),
+                self.model.revoked_at.isnot(None),
                 self.model.revoked_at < cutoff_date,
                 self.model.deleted_at.is_(None)
             )
@@ -395,7 +391,7 @@ class TokenRepository(BaseRepository[Token]):
         return self.db.query(self.model).filter(
             and_(
                 self.model.user_uuid == user_uuid,
-                self.model.revoked.is_(False),
+                self.model.revoked_at.is_(None),
                 self.model.deleted_at.is_(None),
                 self.model.ip_address != current_ip,
                 self.model.ip_address.isnot(None)

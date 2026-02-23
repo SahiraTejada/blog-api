@@ -114,25 +114,16 @@ async def register(
     - **last_name**: User's last name
     """
     auth_service = AuthService(db)
-    token_service = TokenService(db)
 
-    # Create user
-    user = auth_service.create_user(
+    # Register user and create tokens atomically
+    user, tokens = auth_service.register(
         username=user_data.username,
         email=user_data.email,
         password=user_data.password,
         first_name=user_data.first_name,
         last_name=user_data.last_name,
         role=user_data.role if user_data.role else UserRole.USER,
-    )
-
-    # Get client IP for token tracking
-    ip_address = get_client_ip(request)
-
-    # Create token pair (auto-login)
-    tokens = token_service.create_token_pair(
-        user_uuid=user.uuid,
-        ip_address=ip_address,
+        ip_address=get_client_ip(request),
     )
 
     return AuthResponseSchema(

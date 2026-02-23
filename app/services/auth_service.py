@@ -8,8 +8,8 @@ Architecture Flow:
     Route → AuthService → UserRepository → Database
 
 The AuthService handles:
-    - User registration (create_user)
-    - Credential validation (for login - delegates to TokenService for tokens)
+    - User registration (register)
+    - Credential validation (login)
     - Password management
 
 Security Considerations:
@@ -18,7 +18,7 @@ Security Considerations:
     - No plain text passwords are ever stored or returned
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -29,9 +29,11 @@ from app.core.exceptions import (
     UsernameExistsException,
 )
 from app.core.security import hash_password, verify_password
+from app.models.tokens import Token
 from app.models.users import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.services.base_service import BaseService
+from app.services.token_service import TokenService
 
 
 class AuthService(BaseService[User]):
@@ -65,8 +67,8 @@ class AuthService(BaseService[User]):
         Example:
             auth_service = AuthService(db)
         """
-        # Create the user repository for database operations
         self.user_repo = UserRepository(db)
+        self.token_service = TokenService(db)
 
         # Pass repository to BaseService for inherited CRUD methods
         super().__init__(self.user_repo)
@@ -141,6 +143,53 @@ class AuthService(BaseService[User]):
         # Step 5: Create user using inherited create() method
         # This handles IntegrityError → 409 if any constraint fails
         return self.create(user_data)
+
+    def register(
+        self,
+        username: str,
+        email: str,
+        password: str,
+        first_name: str,
+        last_name: str,
+        role: UserRole = UserRole.USER,
+        ip_address: Optional[str] = None
+    ) -> Tuple[User, Dict[str, Token]]:
+        """
+        Register a new user and create tokens.
+
+        Args:
+            username: Unique username
+            email: Unique email address
+            password: Plain text password (will be hashed)
+            first_name: User's first name
+            last_name: User's last name
+            role: User role (default: USER)
+            ip_address: Client IP for token tracking
+
+        Returns:
+            Tuple of (User, tokens_dict) where tokens_dict has 'access' and 'refresh'
+
+        Raises:
+            UsernameExistsException: If username already exists
+            EmailExistsException: If email already exists
+        """
+        # Create user
+        user = self.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            role=role,
+        )
+
+        # Create tokens
+        tokens = self.token_service.create_token_pair(
+            user_uuid=user.uuid,
+            ip_address=ip_address,
+        )
+
+        return user, tokens
 
     # ========================================================================
     # CREDENTIAL VALIDATION

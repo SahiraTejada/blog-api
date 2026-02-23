@@ -433,8 +433,7 @@ class BaseRepository(Generic[ModelType]):
         Create a new record in the database.
 
         This method instantiates a new model instance, adds it to the session,
-        commits the transaction, and returns the created object with all
-        database-generated fields (like UUID, timestamps) populated.
+        commits the transaction, and returns the created object.
 
         Args:
             obj_in: Dictionary containing the field values for the new record
@@ -444,37 +443,20 @@ class BaseRepository(Generic[ModelType]):
 
         Raises:
             IntegrityError: If the data violates database constraints
-                           (e.g., unique constraints, foreign key constraints)
             SQLAlchemyError: For other database errors
-
-
-        Note:
-            - The method automatically commits the transaction
-            - If an error occurs, the transaction is rolled back
-            - After commit, the object is refreshed to get DB-generated values
         """
         try:
-            # Create a new instance of the model with the provided data
             db_obj = self.model(**obj_in)
-
-            # Add the instance to the session (marks it for insert)
             self.db.add(db_obj)
-
-            # Commit the transaction (actually writes to the database)
             self.db.commit()
-
-            # Refresh to get any database-generated values (UUID, timestamps, etc.)
             self.db.refresh(db_obj)
 
             return db_obj
 
         except IntegrityError as e:
-            # Rollback the transaction if there's a constraint violation
             self.db.rollback()
-            # Re-raise the exception so the caller can handle it
             raise e
         except SQLAlchemyError as e:
-            # Rollback for any other database error
             self.db.rollback()
             raise e
 
