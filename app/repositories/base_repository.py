@@ -14,8 +14,10 @@ Benefits:
 
 """
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, Type, Union
 from uuid import UUID
 
 from sqlalchemy import func, or_
@@ -24,7 +26,10 @@ from sqlalchemy.orm import Session
 
 from app.models.base import ModelType
 from app.schemas.base import PaginationParams
-from app.utils.pagination import PaginatedResponse, paginate
+from app.utils.pagination import paginate
+
+if TYPE_CHECKING:
+    from app.utils.pagination import PaginatedResponse
 
 # ============================================================================
 # BASE REPOSITORY CLASS

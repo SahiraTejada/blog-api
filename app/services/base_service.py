@@ -12,7 +12,9 @@ Repository returns:        Service does:
 
 """
 
-from typing import Any, Dict, Generic, List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -21,7 +23,9 @@ from sqlalchemy.exc import IntegrityError
 from app.models.base import ModelType
 from app.repositories.base_repository import BaseRepository
 from app.schemas.base import PaginationParams
-from app.utils.pagination import PaginatedResponse
+
+if TYPE_CHECKING:
+    from app.utils.pagination import PaginatedResponse
 
 
 class BaseService(Generic[ModelType]):

@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
 from sqlalchemy import func
@@ -6,7 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.models import Category, Post, PostStatus
 from app.repositories.base_repository import BaseRepository
-from app.schemas.base import PaginatedResponse, PaginationParams
+from app.schemas.base import PaginationParams
+
+if TYPE_CHECKING:
+    from app.schemas.base import PaginatedResponse
 
 
 class PostRepository(BaseRepository[Post]):

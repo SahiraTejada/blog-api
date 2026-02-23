@@ -1,11 +1,15 @@
-from typing import List, Optional, Tuple, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 from sqlalchemy.orm import Session
 
 from app.models import User
 from app.repositories.base_repository import BaseRepository
 from app.schemas.base import PaginationParams
-from app.utils.pagination import PaginatedResponse
+
+if TYPE_CHECKING:
+    from app.utils.pagination import PaginatedResponse
 
 
 class UserRepository(BaseRepository[User]):
