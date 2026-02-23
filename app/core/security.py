@@ -1,9 +1,9 @@
 """
 Security module for password hashing and verification.
 
-This module provides secure password handling using bcrypt algorithm through
-the passlib library. Bcrypt is specifically designed for password hashing and
-includes built-in protection against timing attacks and rainbow table attacks.
+This module provides secure password handling using bcrypt algorithm.
+Bcrypt is specifically designed for password hashing and includes
+built-in protection against timing attacks and rainbow table attacks.
 
 Why bcrypt?
 -----------
@@ -22,21 +22,15 @@ Usage:
     is_valid = verify_password("user_input", stored_hash)
 """
 
-from passlib.context import CryptContext
+import bcrypt
 
 # =============================================================================
 # PASSWORD HASHING CONFIGURATION
 # =============================================================================
 
-# CryptContext is passlib's main interface for password hashing.
-# It handles hash creation, verification, and algorithm migration.
-#
-# Parameters explained:
-# - schemes: List of algorithms to use. "bcrypt" is the primary (and only) scheme.
-# - deprecated: Setting to "auto" means if we add new schemes in the future,
-#               old hashes will still verify but new passwords will use the
-#               latest scheme. This enables seamless algorithm migration.
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Cost factor for bcrypt (2^12 = 4096 iterations)
+# Increase this value as hardware becomes faster
+BCRYPT_ROUNDS = 12
 
 
 def hash_password(password: str) -> str:
@@ -71,8 +65,17 @@ def hash_password(password: str) -> str:
         - Never log or print the plain password
         - The hash is one-way; the original password cannot be recovered
         - Each call generates a different hash due to random salt
+        - bcrypt truncates passwords longer than 72 bytes
     """
-    return pwd_context.hash(password)
+    # Encode password to bytes
+    password_bytes = password.encode("utf-8")
+
+    # Generate salt and hash
+    salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
+    hashed = bcrypt.hashpw(password_bytes, salt)
+
+    # Return as string for database storage
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -106,4 +109,13 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         - Constant-time comparison prevents timing attacks
         - Returns False for malformed hashes (doesn't raise exceptions)
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        # Encode both to bytes
+        password_bytes = plain_password.encode("utf-8")
+        hash_bytes = hashed_password.encode("utf-8")
+
+        # Verify using bcrypt's constant-time comparison
+        return bcrypt.checkpw(password_bytes, hash_bytes)
+    except (ValueError, TypeError):
+        # Return False for malformed hashes
+        return False

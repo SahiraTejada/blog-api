@@ -267,15 +267,11 @@ class RefreshTokenResponseSchema(BaseSchema):
     Attributes:
         access_token: New JWT access token
         refresh_token: New refresh token (optional, for token rotation)
-        token_type: Type of token (always "bearer")
-        expires_in: Time in seconds until access token expires
 
     Example:
         {
             "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            "token_type": "bearer",
-            "expires_in": 1800
+            "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         }
     """
 
@@ -287,14 +283,6 @@ class RefreshTokenResponseSchema(BaseSchema):
         default=None,
         description="New refresh token (for token rotation)",
         json_schema_extra={"example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
-    )
-    token_type: str = Field(
-        default="bearer",
-        description="Token type (always bearer for JWT)"
-    )
-    expires_in: int = Field(
-        description="Time in seconds until access token expires",
-        json_schema_extra={"example": 1800}
     )
 
 

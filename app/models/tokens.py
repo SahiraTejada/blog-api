@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID as UUID_TYPE
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String
+from sqlalchemy import DateTime, Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -59,11 +59,6 @@ class Token(BaseModel):
         DateTime(timezone=True),
         nullable=False
     )
-    revoked: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
-        nullable=False
-    )
     revoked_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
@@ -95,7 +90,7 @@ class Token(BaseModel):
     @property
     def is_revoked(self) -> bool:
         """Check if the token has been revoked."""
-        return self.revoked
+        return self.revoked_at is not None
 
     @property
     def is_valid(self) -> bool:
@@ -103,6 +98,5 @@ class Token(BaseModel):
         return not self.is_expired and not self.is_revoked and not self.deleted_at
 
     def revoke(self) -> None:
-        """Revoke the token by setting the revoked flag and timestamp."""
-        self.revoked = True
+        """Revoke the token by setting the timestamp."""
         self.revoked_at = datetime.now(timezone.utc)
