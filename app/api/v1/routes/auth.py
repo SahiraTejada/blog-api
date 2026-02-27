@@ -12,16 +12,16 @@ This module provides API endpoints for authentication operations including:
 All endpoints follow REST conventions and return standardized responses.
 """
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ForbiddenException, TokenMissingException, UserNotFoundException
+from app.api.dependencies import AuthContext, get_auth_context, get_bearer_token
+from app.api.middleware.auth import get_client_ip
+from app.core.exceptions import ForbiddenException
 from app.database.session import get_db
 from app.models.tokens import TokenType
-from app.models.users import UserRole
 from app.schemas.auth import AuthResponseSchema, LoginUserSchema, RegisterUserSchema, UserPasswordUpdateSchema
 from app.schemas.token import (
     ActiveSessionsResponseSchema,
@@ -34,50 +34,6 @@ from app.services.auth_service import AuthService
 from app.services.token_service import TokenService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
-
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
-
-def get_client_ip(request: Request) -> Optional[str]:
-    """
-    Extract client IP address from request.
-
-    Checks X-Forwarded-For header for proxied requests,
-    falls back to direct client host.
-
-    Args:
-        request: FastAPI Request object
-
-    Returns:
-        Client IP address or None
-    """
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        # X-Forwarded-For can contain multiple IPs, first is the client
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
-
-
-def get_bearer_token(request: Request) -> str:
-    """
-    Extract bearer token from Authorization header.
-
-    Args:
-        request: FastAPI Request object
-
-    Returns:
-        Token string without "Bearer " prefix
-
-    Raises:
-        TokenMissingException: If no Authorization header
-    """
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise TokenMissingException()
-    return auth_header.replace("Bearer ", "")
 
 
 # ============================================================================
@@ -122,7 +78,6 @@ async def register(
         password=user_data.password,
         first_name=user_data.first_name,
         last_name=user_data.last_name,
-        role=user_data.role if user_data.role else UserRole.USER,
         ip_address=get_client_ip(request),
     )
 
@@ -171,13 +126,10 @@ async def login(
         password=credentials.password,
     )
 
-    # Get client IP for token tracking
-    ip_address = get_client_ip(request)
-
     # Create token pair
     tokens = token_service.create_token_pair(
         user_uuid=user.uuid,
-        ip_address=ip_address,
+        ip_address=get_client_ip(request),
     )
 
     return AuthResponseSchema(
@@ -198,7 +150,7 @@ async def login(
     },
 )
 async def logout(
-    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ) -> RevokeTokensResponseSchema:
     """
@@ -210,13 +162,7 @@ async def logout(
     Requires Authorization header with Bearer token.
     """
     token_service = TokenService(db)
-    token_string = get_bearer_token(request)
-
-    # Validate token first (raises exception if invalid)
-    token_service.validate_access_token(token_string)
-
-    # Revoke the token
-    revoked = token_service.revoke_token(token_string)
+    revoked = token_service.revoke_token(auth.token)
 
     return RevokeTokensResponseSchema(
         message="Logged out successfully",
@@ -235,7 +181,7 @@ async def logout(
     },
 )
 async def logout_all(
-    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ) -> RevokeTokensResponseSchema:
     """
@@ -247,13 +193,7 @@ async def logout_all(
     Requires Authorization header with Bearer token.
     """
     token_service = TokenService(db)
-    token_string = get_bearer_token(request)
-
-    # Validate and get user from token
-    token = token_service.validate_access_token(token_string)
-
-    # Revoke all user tokens
-    count = token_service.revoke_all_user_tokens(token.user_uuid)
+    count = token_service.revoke_all_user_tokens(auth.user.uuid)
 
     return RevokeTokensResponseSchema(
         message=f"Logged out from {count} devices",
@@ -278,6 +218,7 @@ async def logout_all(
 )
 async def refresh_token(
     request: Request,
+    token: str = Depends(get_bearer_token),
     db: Session = Depends(get_db),
 ) -> RefreshTokenResponseSchema:
     """
@@ -291,13 +232,11 @@ async def refresh_token(
     Requires Authorization header with Bearer refresh_token.
     """
     token_service = TokenService(db)
-    refresh_token_string = get_bearer_token(request)
-    ip_address = get_client_ip(request)
 
     # Refresh tokens (validates, revokes old, creates new)
     new_tokens = token_service.refresh_tokens(
-        refresh_token_string=refresh_token_string,
-        ip_address=ip_address,
+        refresh_token_string=token,
+        ip_address=get_client_ip(request),
         rotate_refresh_token=True,
     )
 
@@ -323,7 +262,7 @@ async def refresh_token(
     },
 )
 async def get_sessions(
-    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ) -> ActiveSessionsResponseSchema:
     """
@@ -337,14 +276,10 @@ async def get_sessions(
     Requires Authorization header with Bearer token.
     """
     token_service = TokenService(db)
-    current_token_string = get_bearer_token(request)
-
-    # Validate and get user
-    current_token = token_service.validate_access_token(current_token_string)
 
     # Get all active access tokens
     tokens = token_service.get_user_tokens(
-        user_uuid=current_token.user_uuid,
+        user_uuid=auth.user.uuid,
         token_type=TokenType.ACCESS,
         include_revoked=False,
         include_expired=False,
@@ -358,7 +293,7 @@ async def get_sessions(
             created_at=t.created_at,
             expires_at=t.expires_at,
             ip_address=t.ip_address,
-            is_current=(t.token == current_token_string),
+            is_current=(t.token == auth.token),
         )
         for t in tokens
     ]
@@ -382,7 +317,7 @@ async def get_sessions(
 )
 async def revoke_session(
     session_uuid: str,
-    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ) -> RevokeTokensResponseSchema:
     """
@@ -393,16 +328,12 @@ async def revoke_session(
     Requires Authorization header with Bearer token.
     """
     token_service = TokenService(db)
-    current_token_string = get_bearer_token(request)
-
-    # Validate current token
-    current_token = token_service.validate_access_token(current_token_string)
 
     # Get the session token to revoke
     session_token = token_service.get_by_uuid(UUID(session_uuid))
 
     # Ensure the token belongs to the current user
-    if session_token.user_uuid != current_token.user_uuid:
+    if session_token.user_uuid != auth.user.uuid:
         raise ForbiddenException(message="Cannot revoke another user's session")
 
     # Revoke the session
@@ -425,7 +356,7 @@ async def revoke_session(
     },
 )
 async def logout_others(
-    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ) -> RevokeTokensResponseSchema:
     """
@@ -437,15 +368,11 @@ async def logout_others(
     Requires Authorization header with Bearer token.
     """
     token_service = TokenService(db)
-    current_token_string = get_bearer_token(request)
-
-    # Validate current token
-    current_token = token_service.validate_access_token(current_token_string)
 
     # Revoke all except current
     count = token_service.revoke_all_except_current(
-        user_uuid=current_token.user_uuid,
-        current_token=current_token_string,
+        user_uuid=auth.user.uuid,
+        current_token=auth.token,
     )
 
     return RevokeTokensResponseSchema(
@@ -471,7 +398,7 @@ async def logout_others(
 )
 async def change_password(
     password_data: UserPasswordUpdateSchema,
-    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ) -> RevokeTokensResponseSchema:
     """
@@ -487,27 +414,18 @@ async def change_password(
     """
     auth_service = AuthService(db)
     token_service = TokenService(db)
-    current_token_string = get_bearer_token(request)
-
-    # Validate current token and get user
-    current_token = token_service.validate_access_token(current_token_string)
-
-    # Get user from repository
-    user = auth_service.user_repo.get_by_uuid(current_token.user_uuid)
-    if not user:
-        raise UserNotFoundException(identifier=str(current_token.user_uuid))
 
     # Change password (validates current password)
     auth_service.change_password(
-        user=user,
+        user=auth.user,
         current_password=password_data.current_password,
         new_password=password_data.new_password,
     )
 
     # Revoke all other sessions for security
     count = token_service.revoke_all_except_current(
-        user_uuid=current_token.user_uuid,
-        current_token=current_token_string,
+        user_uuid=auth.user.uuid,
+        current_token=auth.token,
     )
 
     return RevokeTokensResponseSchema(

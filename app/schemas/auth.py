@@ -1,8 +1,5 @@
-from typing import Optional
-
 from pydantic import EmailStr, Field, field_validator
 
-from app.models.users import UserRole
 from app.schemas.base import BaseSchema, CreateSchema, UpdateSchema
 from app.schemas.user import UserBaseSchema
 from app.utils.validator_utils import validate_password, validate_username
@@ -47,7 +44,6 @@ class RegisterUserSchema(CreateSchema):
         min_length=1, max_length=255, description="User's first name", json_schema_extra={"example": "John"}
     )
     last_name: str = Field(min_length=1, max_length=255, description="User's last name", json_schema_extra={"example": "Doe"})
-    role: Optional[UserRole] = Field(default=UserRole.USER, description="User role (defaults to USER)")
 
     @field_validator("username")
     @classmethod

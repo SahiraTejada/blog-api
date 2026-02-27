@@ -433,7 +433,8 @@ class BaseRepository(Generic[ModelType]):
         Create a new record in the database.
 
         This method instantiates a new model instance, adds it to the session,
-        commits the transaction, and returns the created object.
+        flushes to the database (without committing), and returns the created object.
+        The actual commit happens at the end of the request via get_db().
 
         Args:
             obj_in: Dictionary containing the field values for the new record
@@ -448,7 +449,7 @@ class BaseRepository(Generic[ModelType]):
         try:
             db_obj = self.model(**obj_in)
             self.db.add(db_obj)
-            self.db.commit()
+            self.db.flush()
             self.db.refresh(db_obj)
 
             return db_obj
@@ -498,8 +499,8 @@ class BaseRepository(Generic[ModelType]):
             # Add all instances to the session
             self.db.add_all(db_objs)
 
-            # Commit the transaction (all inserts happen together)
-            self.db.commit()
+            # Flush to database (commit happens at request end via get_db)
+            self.db.flush()
 
             # Refresh all objects to get database-generated values
             for db_obj in db_objs:
@@ -564,8 +565,8 @@ class BaseRepository(Generic[ModelType]):
                 if hasattr(db_obj, field):
                     setattr(db_obj, field, value)
 
-            # Commit the changes
-            self.db.commit()
+            # Flush changes (commit happens at request end via get_db)
+            self.db.flush()
 
             # Refresh to get updated values (like updated_at timestamp)
             self.db.refresh(db_obj)
@@ -624,7 +625,7 @@ class BaseRepository(Generic[ModelType]):
             # Perform the bulk update
             count = query.update(update_values, synchronize_session=False)  # type: ignore[arg-type]
 
-            self.db.commit()
+            self.db.flush()
 
             return count
 
@@ -684,7 +685,7 @@ class BaseRepository(Generic[ModelType]):
                 # Soft delete: just set the deleted_at timestamp
                 setattr(db_obj, "deleted_at", datetime.now(timezone.utc))
 
-            self.db.commit()
+            self.db.flush()
             return True
 
         except IntegrityError as e:
@@ -733,7 +734,7 @@ class BaseRepository(Generic[ModelType]):
             else:
                 count = query.update({"deleted_at": datetime.now(timezone.utc)}, synchronize_session=False)
 
-            self.db.commit()
+            self.db.flush()
             return count
 
         except IntegrityError as e:
@@ -779,7 +780,7 @@ class BaseRepository(Generic[ModelType]):
         try:
             # Clear the deleted_at timestamp
             setattr(db_obj, "deleted_at", None)
-            self.db.commit()
+            self.db.flush()
             return True
 
         except SQLAlchemyError as e:
@@ -914,8 +915,8 @@ class BaseRepository(Generic[ModelType]):
                     instances.append(new_obj)
                     created_count += 1
 
-            # Commit all changes at once
-            self.db.commit()
+            # Flush all changes (commit happens at request end via get_db)
+            self.db.flush()
 
             # Refresh all new objects
             for obj in instances[len(instances) - created_count:]:
