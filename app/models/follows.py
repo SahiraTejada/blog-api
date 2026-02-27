@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID as UUID_TYPE
 
 from sqlalchemy import DateTime, ForeignKey, PrimaryKeyConstraint
@@ -19,8 +19,11 @@ class Follow(Base):
     Uses a composite primary key (follower_uuid, followee_uuid) to ensure
     a user cannot follow the same user twice.
 
+    Supports soft delete via deleted_at field. When a user unfollows,
+    deleted_at is set instead of removing the row.
+
     Note: This is an association table and does NOT inherit from BaseModel
-    as it doesn't need uuid, updated_at, or deleted_at fields.
+    as it doesn't need uuid or updated_at fields.
     """
 
     __tablename__ = "follows"
@@ -41,6 +44,11 @@ class Follow(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False
+    )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None
     )
 
     # Composite primary key ensures uniqueness of follower-followee pairs

@@ -186,7 +186,7 @@ from app.models import Post, PostStatus
 from app.repositories.post_repository import PostRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.base import PaginationParams
-from app.utils.pagination import PaginatedResponse
+from app.schemas.base import PaginatedResponse
 
 
 class PostService:
@@ -447,7 +447,7 @@ from sqlalchemy.orm import Session
 from app.models import Category
 from app.repositories.category_repository import CategoryRepository
 from app.schemas.base import PaginationParams
-from app.utils.pagination import PaginatedResponse
+from app.schemas.base import PaginatedResponse
 
 
 class CategoryService:

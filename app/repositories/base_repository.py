@@ -29,7 +29,7 @@ from app.schemas.base import PaginationParams
 from app.utils.pagination import paginate
 
 if TYPE_CHECKING:
-    from app.utils.pagination import PaginatedResponse
+    from app.schemas.base import PaginatedResponse
 
 # ============================================================================
 # BASE REPOSITORY CLASS
