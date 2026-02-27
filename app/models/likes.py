@@ -1,42 +1,53 @@
-from typing import TYPE_CHECKING
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID as UUID_TYPE
 
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.database.connection import Base
 
 if TYPE_CHECKING:
     from app.models.posts import Post
     from app.models.users import User
 
 
-class Likes(BaseModel):
+class Likes(Base):
     """
     Likes model for post likes.
 
-    A user can like a post only once (enforced by unique constraint).
-    Inherits uuid, created_at, updated_at, deleted_at from BaseModel.
+    A user can like a post only once (enforced by composite primary key).
+
+    Note: This is an association table and does NOT inherit from BaseModel
+    as it doesn't need uuid or updated_at fields.
     """
 
     __tablename__ = "likes"
 
-    post_uuid: Mapped[UUID_TYPE] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("posts.uuid"),
-        index=True,
-        nullable=False
-    )
     user_uuid: Mapped[UUID_TYPE] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.uuid"),
-        index=True,
         nullable=False
+    )
+    post_uuid: Mapped[UUID_TYPE] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("posts.uuid"),
+        nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None
     )
 
     __table_args__ = (
-        UniqueConstraint('user_uuid', 'post_uuid', name='unique_user_post_like'),
+        PrimaryKeyConstraint('user_uuid', 'post_uuid'),
     )
 
     # Relationships

@@ -25,7 +25,7 @@ from app.repositories.base_repository import BaseRepository
 from app.schemas.base import PaginationParams
 
 if TYPE_CHECKING:
-    from app.utils.pagination import PaginatedResponse
+    from app.schemas.base import PaginatedResponse
 
 
 class BaseService(Generic[ModelType]):
