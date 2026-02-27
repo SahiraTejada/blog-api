@@ -27,13 +27,19 @@ def get_db() -> Generator[Session, None, None]:
     """
     Database session dependency for FastAPI routes.
 
-    This is a generator function that yields a database session and ensures
-    it's properly closed after the request is completed, even if an error occurs.
+    Implements the **session-per-request** pattern (recommended by SQLAlchemy):
+    - All operations within a single request share the same transaction.
+    - If the request completes successfully, the transaction is committed.
+    - If any exception occurs, the entire transaction is rolled back.
+
+    This guarantees atomicity: multi-step operations like user registration
+    (create user + create tokens) either fully succeed or fully revert.
 
     FastAPI's Depends() will automatically:
     1. Create a new session before the request
     2. Inject it into your route function
-    3. Close it after the request (even if an exception occurred)
+    3. Commit or rollback after the route completes
+    4. Close the session (even if an exception occurred)
 
     Usage in FastAPI routes:
         @router.get("/users")
@@ -44,13 +50,17 @@ def get_db() -> Generator[Session, None, None]:
     Yields:
         Session: SQLAlchemy database session
 
-    Note: Each request gets its own independent session.
+    Note: Each request gets its own independent session and transaction.
     """
-    db = SessionLocal()  # Create a new session
+    db = SessionLocal()
     try:
-        yield db  # Provide the session to the route
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     finally:
-        db.close()  # Always close the session, even if an error occurred
+        db.close()
 
 
 def get_db_session() -> Session:
