@@ -46,7 +46,6 @@ from app.models.users import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.services.token_service import TokenService
 
-
 # ============================================================================
 # AUTH CONTEXT
 # ============================================================================
