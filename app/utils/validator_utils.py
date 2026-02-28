@@ -1,5 +1,6 @@
 import re
-from typing import Optional
+from typing import Literal, Optional
+from urllib.parse import urlparse
 
 
 def validate_username(username: Optional[str], allow_none: bool = False) -> Optional[str]:
@@ -54,9 +55,7 @@ def validate_username(username: Optional[str], allow_none: bool = False) -> Opti
 
     # Can only contain letters, numbers, underscores, and hyphens
     if not re.match(r"^[a-zA-Z0-9_-]+$", username):
-        raise ValueError(
-            "Username can only contain letters, numbers, underscores, and hyphens"
-        )
+        raise ValueError("Username can only contain letters, numbers, underscores, and hyphens")
 
     # No consecutive special characters
     if re.search(r"[-_]{2,}", username):
@@ -113,8 +112,87 @@ def validate_password(password: str, field_name: str = "Password") -> str:
 
     # Check for at least one special character
     if not re.search(r"[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]", password):
-        raise ValueError(
-            f"{field_name} must contain at least one special character (!@#$%^&*()_+-=[]{{}}|;:,.<>?)"
-        )
+        raise ValueError(f"{field_name} must contain at least one special character (!@#$%^&*()_+-=[]{{}}|;:,.<>?)")
 
     return password
+
+
+ImageFormat = Literal["jpg", "jpeg", "png", "gif", "webp", "svg", "ico", "bmp", "avif"]
+
+
+def validate_image_url(
+    url: str, allowed_formats: Optional[list[str]] = None, require_https: bool = False, max_length: int = 2048
+) -> tuple[bool, Optional[str]]:
+    """
+    Validates image URLs with multiple criteria
+
+    Args:
+        url: The URL to validate
+        allowed_formats: List of allowed formats (e.g., ['jpg', 'png'])
+                        If None, allows all common formats
+        require_https: If True, only accepts HTTPS URLs
+        max_length: Maximum URL length
+
+    Returns:
+        (is_valid, error_message)
+
+    Examples:
+        >>> validate_image_url("https://example.com/image.jpg")
+        (True, None)
+        >>> validate_image_url("http://example.com/image.pdf")
+        (False, "Invalid image format. Must end with: .jpg, .jpeg, .png...")
+    """
+    # Validation 1: URL is not empty
+    if not url or not url.strip():
+        return False, "Image URL cannot be empty"
+
+    url = url.strip()
+
+    # Validation 2: Maximum length
+    if len(url) > max_length:
+        return False, f"URL too long. Maximum {max_length} characters"
+
+    try:
+        # Validation 3: Parse URL
+        parsed = urlparse(url)
+
+        # Validation 4: Valid scheme
+        if not parsed.scheme:
+            return False, "URL must include http:// or https://"
+
+        if parsed.scheme not in ["http", "https"]:
+            return False, f"Invalid protocol: {parsed.scheme}. Must be http or https"
+
+        # Validation 5: HTTPS required (optional)
+        if require_https and parsed.scheme != "https":
+            return False, "Only HTTPS URLs are allowed for security reasons"
+
+        # Validation 6: Valid domain
+        if not parsed.netloc:
+            return False, "URL must include a valid domain"
+
+        # Validation 7: Image format
+        if allowed_formats is None:
+            # Default formats
+            allowed_formats = ["jpg", "jpeg", "png", "gif", "webp", "svg", "ico", "bmp", "avif"]
+
+        # Get the extension (handles query params and fragments)
+        path = parsed.path.lower()
+
+        # Remove query strings and fragments to get the real extension
+        if "?" in path:
+            path = path.split("?")[0]
+        if "#" in path:
+            path = path.split("#")[0]
+
+        # Verify extension
+        valid_extensions = tuple(f".{fmt.lower()}" for fmt in allowed_formats)
+
+        if not path.endswith(valid_extensions):
+            formats_str = ", ".join(f".{fmt}" for fmt in allowed_formats)
+            return False, f"Invalid image format. Must end with: {formats_str}"
+
+        return True, None
+
+    except ValueError as e:
+        return False, f"Invalid URL format: {str(e)}"

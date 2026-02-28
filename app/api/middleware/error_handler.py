@@ -10,6 +10,7 @@ Features:
 - Different handling for dev vs production
 - Structured logging with context
 - Specific handlers for common error types
+- Custom AppException handling
 - Security: No stack traces in production
 """
 
@@ -25,6 +26,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.core.config import settings
 from app.core.error_codes import ErrorCode
+from app.core.exceptions import AppException
 from app.schemas.base import ErrorDetail, ErrorResponse
 
 logger = logging.getLogger(__name__)
@@ -181,6 +183,29 @@ async def validation_exception_handler(
     )
 
 
+async def app_exception_handler(
+    request: Request, exc: AppException
+) -> JSONResponse:
+    """
+    Handle custom application exceptions.
+
+    Converts AppException instances to standardized JSON responses
+    with appropriate HTTP status codes.
+    """
+    log_error(request, exc, level="warning")
+
+    headers = None
+    # Add WWW-Authenticate header for 401 responses (OAuth2 spec)
+    if exc.status_code == 401:
+        headers = {"WWW-Authenticate": "Bearer"}
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.to_dict(),
+        headers=headers
+    )
+
+
 async def http_exception_handler(
     request: Request, exc: HTTPException
 ) -> JSONResponse:
@@ -329,7 +354,12 @@ def register_exception_handlers(app) -> None:
 
     Args:
         app: FastAPI application instance
+
+    Handler order matters - more specific exceptions should be registered first.
     """
+    # Custom application exceptions (most specific, should be first)
+    app.add_exception_handler(AppException, app_exception_handler)
+
     # Validation errors (Pydantic)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(ValidationError, validation_exception_handler)
@@ -341,7 +371,7 @@ def register_exception_handlers(app) -> None:
     app.add_exception_handler(IntegrityError, integrity_exception_handler)
     app.add_exception_handler(SQLAlchemyError, sqlalchemy_exception_handler)
 
-    # Generic catch-all
+    # Generic catch-all (least specific, should be last)
     app.add_exception_handler(Exception, generic_exception_handler)
 
     logger.info("Exception handlers registered successfully")

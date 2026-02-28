@@ -2,34 +2,49 @@
 Base Service Module
 
 This module provides a generic service pattern that wraps BaseRepository operations
-with business logic validation. The service layer adds HTTP-level error handling
+with business logic validation. The service layer adds error handling
 on top of the raw data access that repositories provide.
 
 Repository returns:        Service does:
-    None                       raise HTTPException(404)
-    IntegrityError             raise HTTPException(409)
+    None                       raise NotFoundException (404)
+    IntegrityError             raise ConflictException (409)
     Model instance             return it as-is
+
+These are generic defaults. Child services that need specific exceptions
+(e.g., UserNotFoundException) should use the repo directly and raise them
+explicitly in their own methods.
 
 """
 
-from typing import Any, Dict, Generic, List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, NoReturn, Optional
 from uuid import UUID
 
-from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
+from app.core.exceptions.common import ConflictException, NotFoundException
 from app.models.base import ModelType
 from app.repositories.base_repository import BaseRepository
 from app.schemas.base import PaginationParams
-from app.utils.pagination import PaginatedResponse
+
+if TYPE_CHECKING:
+    from app.schemas.base import PaginatedResponse
 
 
 class BaseService(Generic[ModelType]):
     """
     Generic service providing common CRUD operations with business logic validation.
 
-    Wraps a BaseRepository and adds HTTP error handling on top of raw data access.
+    Wraps a BaseRepository and adds error handling on top of raw data access.
     Each concrete service should inherit from this and pass its repository to super().__init__().
+
+    The default exceptions use the model class name for context:
+        - NotFoundException(resource="User") → "User not found"
+        - ConflictException → "User already exists"
+
+    Child services that need domain-specific exceptions (e.g., UserNotFoundException)
+    should use the repo directly and handle the None/error case themselves.
 
     Type Parameters:
         ModelType: The SQLAlchemy model class this service manages.
@@ -49,12 +64,26 @@ class BaseService(Generic[ModelType]):
         self.repo = repo
 
     # ========================================================================
+    # EXCEPTION HELPERS
+    # ========================================================================
+
+    def _raise_not_found(self) -> NoReturn:
+        """Raise NotFoundException with the model class name as resource."""
+        raise NotFoundException(resource=self.repo.model.__name__)
+
+    def _raise_conflict(self) -> NoReturn:
+        """Raise ConflictException with the model class name."""
+        raise ConflictException(
+            message=f"{self.repo.model.__name__} already exists"
+        )
+
+    # ========================================================================
     # READ OPERATIONS
     # ========================================================================
 
     def get_by_uuid(self, uuid: UUID) -> ModelType:
         """
-        Get a record by UUID. Raises 404 if not found.
+        Get a record by UUID. Raises NotFoundException if not found.
 
         Args:
             uuid: The UUID of the record
@@ -63,14 +92,11 @@ class BaseService(Generic[ModelType]):
             The model instance
 
         Raises:
-            HTTPException 404: If the record does not exist
+            NotFoundException: If the record does not exist
         """
         instance = self.repo.get_by_uuid(uuid)
         if not instance:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"{self.repo.model.__name__} not found"
-            )
+            self._raise_not_found()
         return instance
 
     def list(
@@ -111,7 +137,7 @@ class BaseService(Generic[ModelType]):
 
     def create(self, data: Dict[str, Any]) -> ModelType:
         """
-        Create a new record. Raises 409 on unique constraint violation.
+        Create a new record. Raises ConflictException on unique constraint violation.
 
         Args:
             data: Dictionary with field values for the new record
@@ -120,15 +146,12 @@ class BaseService(Generic[ModelType]):
             The newly created model instance
 
         Raises:
-            HTTPException 409: If creation violates a unique constraint
+            ConflictException: If creation violates a unique constraint
         """
         try:
             return self.repo.create(data)
         except IntegrityError:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"{self.repo.model.__name__} already exists"
-            )
+            self._raise_conflict()
 
     # ========================================================================
     # UPDATE OPERATIONS
@@ -136,7 +159,7 @@ class BaseService(Generic[ModelType]):
 
     def update(self, uuid: UUID, data: Dict[str, Any]) -> ModelType:
         """
-        Update a record. Raises 404 if not found, 409 on constraint violation.
+        Update a record. Raises NotFoundException if missing, ConflictException on constraint violation.
 
         Args:
             uuid: The UUID of the record to update
@@ -146,19 +169,18 @@ class BaseService(Generic[ModelType]):
             The updated model instance
 
         Raises:
-            HTTPException 404: If the record does not exist
-            HTTPException 409: If update violates a unique constraint
+            NotFoundException: If the record does not exist
+            ConflictException: If update violates a unique constraint
         """
-        self.get_by_uuid(uuid)  # raises 404 if not found
-
         try:
             updated = self.repo.update(uuid, data)
-            return updated  # type: ignore[return-value]
         except IntegrityError:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"{self.repo.model.__name__} already exists"
-            )
+            self._raise_conflict()
+
+        if not updated:
+            self._raise_not_found()
+
+        return updated
 
     # ========================================================================
     # DELETE OPERATIONS
@@ -166,13 +188,15 @@ class BaseService(Generic[ModelType]):
 
     def delete(self, uuid: UUID) -> None:
         """
-        Soft-delete a record. Raises 404 if not found.
+        Soft-delete a record. Raises NotFoundException if not found.
 
         Args:
             uuid: The UUID of the record to delete
 
         Raises:
-            HTTPException 404: If the record does not exist
+            NotFoundException: If the record does not exist
         """
-        self.get_by_uuid(uuid)  # raises 404 if not found
-        self.repo.delete(uuid)
+        deleted = self.repo.delete(uuid)
+
+        if not deleted:
+            self._raise_not_found()

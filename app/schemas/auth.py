@@ -1,9 +1,7 @@
-from typing import Optional
-
 from pydantic import EmailStr, Field, field_validator
 
-from app.models.users import UserRole
-from app.schemas.base import CreateSchema, UpdateSchema
+from app.schemas.base import BaseSchema, CreateSchema, UpdateSchema
+from app.schemas.user import UserBaseSchema
 from app.utils.validator_utils import validate_password, validate_username
 
 
@@ -46,7 +44,6 @@ class RegisterUserSchema(CreateSchema):
         min_length=1, max_length=255, description="User's first name", json_schema_extra={"example": "John"}
     )
     last_name: str = Field(min_length=1, max_length=255, description="User's last name", json_schema_extra={"example": "Doe"})
-    role: Optional[UserRole] = Field(default=UserRole.USER, description="User role (defaults to USER)")
 
     @field_validator("username")
     @classmethod
@@ -129,3 +126,42 @@ class UserPasswordUpdateSchema(UpdateSchema):
     def check_new_password(cls, v: str) -> str:
         """Validate new password strength using utility validator."""
         return validate_password(v, field_name="New password")
+
+
+class AuthResponseSchema(BaseSchema):
+    """
+    Schema for authentication response (register/login).
+
+    Returns tokens and user information for immediate app access.
+
+    Attributes:
+        access_token: JWT access token for API authentication
+        refresh_token: JWT refresh token for obtaining new access tokens
+        user: Authenticated user information
+
+    Example:
+        {
+            "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "user": {
+                "uuid": "123e4567-e89b-12d3-a456-426614174000",
+                "username": "johndoe",
+                "email": "john@example.com",
+                "first_name": "John",
+                "last_name": "Doe",
+                "role": "USER"
+            }
+        }
+    """
+
+    access_token: str = Field(
+        description="JWT access token for API authentication",
+        json_schema_extra={"example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
+    )
+    refresh_token: str = Field(
+        description="JWT refresh token for obtaining new access tokens",
+        json_schema_extra={"example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
+    )
+    user: UserBaseSchema = Field(
+        description="Authenticated user information"
+    )

@@ -1,20 +1,13 @@
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Column, ForeignKey, String, Table, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
+from app.models.posts import post_categories
 
 if TYPE_CHECKING:
     from app.models.posts import Post
-
-post_categories = Table(
-    'post_categories',
-    BaseModel.metadata,
-    Column('post_uuid', UUID(as_uuid=True), ForeignKey('posts.uuid'), primary_key=True),
-    Column('category_uuid', UUID(as_uuid=True), ForeignKey('categories.uuid'), primary_key=True)
-)
 
 
 class Category(BaseModel):

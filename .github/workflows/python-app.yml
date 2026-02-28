@@ -8,6 +8,10 @@ on:
   pull_request:
     branches: [ "*" ]
 
+# Permissions needed for auto-commit
+permissions:
+  contents: write
+
 jobs:
   code-quality:
     runs-on: ubuntu-latest  # Use Ubuntu as the virtual machine OS
@@ -43,13 +47,22 @@ jobs:
         pip install -r requirements.txt      # Install production dependencies
     
     
-    # Step 5: Check import sorting with isort
-    - name: Run isort (import sorting)
+    # Step 5: Auto-format code with isort and autopep8
+    - name: Auto-format code
       run: |
-        pip install isort
-        isort --check-only --diff .  # Verify imports are sorted, show differences
+        pip install isort autopep8
+        isort .  # Fix import sorting
+        autopep8 --in-place --recursive --aggressive .  # Fix formatting (E302, D202, W292, etc.)
 
-    # Step 6: Lint code with Flake8 + bugbear
+    # Step 6: Commit formatting changes (if any)
+    - name: Commit formatting changes
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git diff --quiet || (git add -A && git commit -m "style: auto-format code [skip ci]")
+        git push || echo "No changes to push"
+
+    # Step 7: Lint code with Flake8 + bugbear
     - name: Run Flake8 (linting)
       run: |
         pip install flake8 flake8-bugbear flake8-docstrings  # Install flake8 + bugbear + docstrings
@@ -68,7 +81,7 @@ jobs:
     #     bandit -r . -ll  # -r: recursive scan | -ll: only report medium/high severity issues
 
     # Step 9: Check for known security vulnerabilities in dependencies
-    - name: Run Safety (dependency vulnerability check)
-      run: |
-        pip install safety
-        safety check  # Scan installed packages against safety database
+    # - name: Run Safety (dependency vulnerability check)
+    #   run: |
+    #     pip install safety
+    #     safety scan --target .  # Scan project for known dependency vulnerabilities

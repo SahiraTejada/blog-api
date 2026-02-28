@@ -1,11 +1,16 @@
-from typing import List, Optional, Tuple, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
 from app.models import User
+from app.models.users import UserRole
 from app.repositories.base_repository import BaseRepository
 from app.schemas.base import PaginationParams
-from app.utils.pagination import PaginatedResponse
+
+if TYPE_CHECKING:
+    from app.schemas.base import PaginatedResponse
 
 
 class UserRepository(BaseRepository[User]):
@@ -58,41 +63,38 @@ class UserRepository(BaseRepository[User]):
 
     def get_all_users(
         self,
+        pagination: PaginationParams,
         order_by: str = "created_at",
-        role: Optional[str] = None,
+        role: Optional[UserRole] = None,
         search_term: Optional[str] = None,
-        pagination: Optional[PaginationParams] = None,
-    ) -> Union[List[User], PaginatedResponse[User]]:
+    ) -> PaginatedResponse[User]:
         """
-        Get all active (non-deleted) users with optional filtering and pagination.
+        Get all active (non-deleted) users with filtering and pagination.
 
         Args:
+            pagination: Pagination parameters (page, page_size)
             order_by: Field to order by. Default: "created_at"
             role: Filter users by role
             search_term: Search in username, email, first_name, and last_name
-            pagination: Pagination parameters. If None, returns all users
 
         Returns:
-            List of active user instances
+            PaginatedResponse with users and pagination metadata
 
         Example:
-            # Get all active users ordered by creation date
-            users = user_repo.get_all_users()
-
-            # Get users filtered by role
-            admins = user_repo.get_all_users(role="admin")
-
-            # Search with pagination
             pagination = PaginationParams(page=1, page_size=20)
-            users = user_repo.get_all_users(
+            users = user_repo.get_all_users(pagination=pagination)
+
+            # With filters
+            admins = user_repo.get_all_users(
+                pagination=pagination,
+                role="admin",
                 search_term="john",
-                pagination=pagination
             )
         """
         filters = {"role": role} if role else None
         search_fields = ["username", "email", "first_name", "last_name"] if search_term else None
 
-        return self.get_multi(
+        return self.get_multi(  # type: ignore[return-value]
             include_deleted=False,
             order_by=order_by,
             order_desc=False,

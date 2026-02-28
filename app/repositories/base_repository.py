@@ -14,8 +14,10 @@ Benefits:
 
 """
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, Type, Union
 from uuid import UUID
 
 from sqlalchemy import func, or_
@@ -24,7 +26,10 @@ from sqlalchemy.orm import Session
 
 from app.models.base import ModelType
 from app.schemas.base import PaginationParams
-from app.utils.pagination import PaginatedResponse, paginate
+from app.utils.pagination import paginate
+
+if TYPE_CHECKING:
+    from app.schemas.base import PaginatedResponse
 
 # ============================================================================
 # BASE REPOSITORY CLASS
@@ -428,8 +433,8 @@ class BaseRepository(Generic[ModelType]):
         Create a new record in the database.
 
         This method instantiates a new model instance, adds it to the session,
-        commits the transaction, and returns the created object with all
-        database-generated fields (like UUID, timestamps) populated.
+        flushes to the database (without committing), and returns the created object.
+        The actual commit happens at the end of the request via get_db().
 
         Args:
             obj_in: Dictionary containing the field values for the new record
@@ -439,37 +444,20 @@ class BaseRepository(Generic[ModelType]):
 
         Raises:
             IntegrityError: If the data violates database constraints
-                           (e.g., unique constraints, foreign key constraints)
             SQLAlchemyError: For other database errors
-
-
-        Note:
-            - The method automatically commits the transaction
-            - If an error occurs, the transaction is rolled back
-            - After commit, the object is refreshed to get DB-generated values
         """
         try:
-            # Create a new instance of the model with the provided data
             db_obj = self.model(**obj_in)
-
-            # Add the instance to the session (marks it for insert)
             self.db.add(db_obj)
-
-            # Commit the transaction (actually writes to the database)
-            self.db.commit()
-
-            # Refresh to get any database-generated values (UUID, timestamps, etc.)
+            self.db.flush()
             self.db.refresh(db_obj)
 
             return db_obj
 
         except IntegrityError as e:
-            # Rollback the transaction if there's a constraint violation
             self.db.rollback()
-            # Re-raise the exception so the caller can handle it
             raise e
         except SQLAlchemyError as e:
-            # Rollback for any other database error
             self.db.rollback()
             raise e
 
@@ -511,8 +499,8 @@ class BaseRepository(Generic[ModelType]):
             # Add all instances to the session
             self.db.add_all(db_objs)
 
-            # Commit the transaction (all inserts happen together)
-            self.db.commit()
+            # Flush to database (commit happens at request end via get_db)
+            self.db.flush()
 
             # Refresh all objects to get database-generated values
             for db_obj in db_objs:
@@ -577,8 +565,8 @@ class BaseRepository(Generic[ModelType]):
                 if hasattr(db_obj, field):
                     setattr(db_obj, field, value)
 
-            # Commit the changes
-            self.db.commit()
+            # Flush changes (commit happens at request end via get_db)
+            self.db.flush()
 
             # Refresh to get updated values (like updated_at timestamp)
             self.db.refresh(db_obj)
@@ -637,7 +625,7 @@ class BaseRepository(Generic[ModelType]):
             # Perform the bulk update
             count = query.update(update_values, synchronize_session=False)  # type: ignore[arg-type]
 
-            self.db.commit()
+            self.db.flush()
 
             return count
 
@@ -697,7 +685,7 @@ class BaseRepository(Generic[ModelType]):
                 # Soft delete: just set the deleted_at timestamp
                 setattr(db_obj, "deleted_at", datetime.now(timezone.utc))
 
-            self.db.commit()
+            self.db.flush()
             return True
 
         except IntegrityError as e:
@@ -746,7 +734,7 @@ class BaseRepository(Generic[ModelType]):
             else:
                 count = query.update({"deleted_at": datetime.now(timezone.utc)}, synchronize_session=False)
 
-            self.db.commit()
+            self.db.flush()
             return count
 
         except IntegrityError as e:
@@ -792,7 +780,7 @@ class BaseRepository(Generic[ModelType]):
         try:
             # Clear the deleted_at timestamp
             setattr(db_obj, "deleted_at", None)
-            self.db.commit()
+            self.db.flush()
             return True
 
         except SQLAlchemyError as e:
@@ -927,11 +915,11 @@ class BaseRepository(Generic[ModelType]):
                     instances.append(new_obj)
                     created_count += 1
 
-            # Commit all changes at once
-            self.db.commit()
+            # Flush all changes (commit happens at request end via get_db)
+            self.db.flush()
 
             # Refresh all new objects
-            for obj in instances[len(instances) - created_count :]:
+            for obj in instances[len(instances) - created_count:]:
                 self.db.refresh(obj)
 
             return instances, created_count, updated_count
