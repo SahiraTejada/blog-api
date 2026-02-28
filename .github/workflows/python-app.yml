@@ -84,4 +84,4 @@ jobs:
     - name: Run Safety (dependency vulnerability check)
       run: |
         pip install safety
-        safety check  # Scan installed packages against safety database
+        safety scan --target .  # Scan project for known dependency vulnerabilities
