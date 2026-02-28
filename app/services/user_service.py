@@ -18,7 +18,9 @@ Security Considerations:
     - No plain text passwords are ever stored or returned
 """
 
-from typing import Any, Dict, List, Optional, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict, Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -31,8 +33,11 @@ from app.core.exceptions.user import UserNotFoundException
 from app.core.security import hash_password
 from app.models.users import User, UserRole
 from app.repositories.user_repository import UserRepository
-from app.schemas.base import PaginatedResponse, PaginationParams
+from app.schemas.base import PaginationParams
 from app.services.base_service import BaseService
+
+if TYPE_CHECKING:
+    from app.schemas.base import PaginatedResponse
 
 
 class UserService(BaseService[User]):
@@ -196,28 +201,28 @@ class UserService(BaseService[User]):
 
     def get_all_users(
         self,
+        pagination: PaginationParams,
         order_by: str = "created_at",
-        role: Optional[str] = None,
+        role: Optional[UserRole] = None,
         search_term: Optional[str] = None,
-        pagination: Optional[PaginationParams] = None,
-    ) -> Union[List[User], PaginatedResponse[User]]:
+    ) -> PaginatedResponse[User]:
         """
         Get all active users with optional filtering, search, and pagination.
 
         Args:
+            pagination: Pagination parameters (page, page_size)
             order_by: Field to order by (default: "created_at")
-            role: Filter users by role (e.g., "USER", "ADMIN")
+            role: Filter users by role (USER, ADMIN)
             search_term: Search in username, email, first_name, and last_name
-            pagination: Pagination parameters. If None, returns all users
 
         Returns:
-            List of users or PaginatedResponse if pagination is provided
+            PaginatedResponse with users and pagination metadata
         """
         return self.user_repo.get_all_users(
+            pagination=pagination,
             order_by=order_by,
             role=role,
             search_term=search_term,
-            pagination=pagination,
         )
 
     def update_user(self, user_uuid: UUID, update_data: Dict[str, Any]) -> User:

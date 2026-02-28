@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import EmailStr, Field, field_validator
 
 from app.models.users import UserRole
-from app.schemas.base import ResponseSchema, UpdateSchema
+from app.schemas.base import PaginatedResponse, PaginationMeta, PaginationParams, ResponseSchema, UpdateSchema
 from app.utils.validator_utils import validate_username
 
 
@@ -100,16 +100,43 @@ class UserUpdateSchema(UpdateSchema):
         return validate_username(v, allow_none=True)
 
 
-class UserResponseSchema(UserBaseSchema):
+class UserListRequest(PaginationParams):
+    """
+    Request schema for listing users with pagination and filters.
+    """
 
-    user: UserBaseSchema = Field(description="Authenticated user information")
+    role: Optional[UserRole] = Field(
+        default=None,
+        description="Filter users by role",
+    )
+    search_term: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="Search in username, email, first name, and last name",
+        json_schema_extra={"example": "john"},
+    )
+
+
+class UserListResponse(PaginatedResponse[UserBaseSchema]):
+    """
+    Schema for paginated list of users.
+
+    Used as response for list users endpoint.
+
+    Attributes:
+        data: List of users for the current page
+        pagination: Pagination metadata (page, total_items, etc.)
+    """
+
+    data: List[UserBaseSchema] = Field(description="List of users for the current page")
+    pagination: PaginationMeta = Field(description="Pagination metadata")
 
 
 class UserPublicSchema(ResponseSchema):
     """
     Schema for public user profile information.
 
-    This is a limited version of UserResponseSchema that excludes
+    This is a limited version of UserBaseSchema that excludes
     sensitive information like email. Use this for public-facing endpoints
     or when showing user info to other users.
 
