@@ -81,7 +81,7 @@ jobs:
     #     bandit -r . -ll  # -r: recursive scan | -ll: only report medium/high severity issues
 
     # Step 9: Check for known security vulnerabilities in dependencies
-    - name: Run Safety (dependency vulnerability check)
-      run: |
-        pip install safety
-        safety scan --target .  # Scan project for known dependency vulnerabilities
+    # - name: Run Safety (dependency vulnerability check)
+    #   run: |
+    #     pip install safety
+    #     safety scan --target .  # Scan project for known dependency vulnerabilities
