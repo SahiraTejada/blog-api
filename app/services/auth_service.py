@@ -18,15 +18,13 @@ Security Considerations:
     - No plain text passwords are ever stored or returned
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import (
-    EmailExistsException,
     InvalidCredentialsException,
     PasswordIncorrectException,
-    UsernameExistsException,
 )
 from app.core.security import hash_password, verify_password
 from app.models.tokens import Token
@@ -34,6 +32,7 @@ from app.models.users import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.services.base_service import BaseService
 from app.services.token_service import TokenService
+from app.services.user_service import UserService
 
 
 class AuthService(BaseService[User]):
@@ -69,6 +68,7 @@ class AuthService(BaseService[User]):
         """
         self.user_repo = UserRepository(db)
         self.token_service = TokenService(db)
+        self.user_service = UserService(db)
 
         # Pass repository to BaseService for inherited CRUD methods
         super().__init__(self.user_repo)
@@ -76,73 +76,6 @@ class AuthService(BaseService[User]):
     # ========================================================================
     # USER REGISTRATION
     # ========================================================================
-
-    def create_user(
-        self,
-        username: str,
-        email: str,
-        password: str,
-        first_name: str,
-        last_name: str,
-        role: UserRole = UserRole.USER
-    ) -> User:
-        """
-        Create a new user (registration).
-
-        This method:
-        1. Validates username and email are unique
-        2. Hashes the password using bcrypt
-        3. Creates the user in the database
-
-        Args:
-            username: Unique username (3-50 characters)
-            email: Unique email address
-            password: Plain text password (will be hashed)
-            first_name: User's first name
-            last_name: User's last name
-            role: User role (default: USER)
-
-        Returns:
-            User: The created user model instance
-
-        Raises:
-            UsernameExistsException: If username already exists
-            EmailExistsException: If email already exists
-
-        Example:
-            user = auth_service.create_user(
-                username="johndoe",
-                email="john@example.com",
-                password="SecurePass123!",
-                first_name="John",
-                last_name="Doe"
-            )
-        """
-        # Step 1: Check if username already exists
-        if self.user_repo.username_exists(username):
-            raise UsernameExistsException()
-
-        # Step 2: Check if email already exists
-        if self.user_repo.email_exists(email):
-            raise EmailExistsException()
-
-        # Step 3: Hash the password using bcrypt
-        # Never store plain text passwords
-        hashed = hash_password(password)
-
-        # Step 4: Prepare user data for creation
-        user_data: Dict[str, Any] = {
-            "username": username,
-            "email": email.lower(),  # Normalize email to lowercase
-            "hashed_password": hashed,
-            "first_name": first_name,
-            "last_name": last_name,
-            "role": role
-        }
-
-        # Step 5: Create user using inherited create() method
-        # This handles IntegrityError → 409 if any constraint fails
-        return self.create(user_data)
 
     def register(
         self,
@@ -174,7 +107,7 @@ class AuthService(BaseService[User]):
             EmailExistsException: If email already exists
         """
         # Create user
-        user = self.create_user(
+        user = self.user_service.create_user(
             username=username,
             email=email,
             password=password,
@@ -225,12 +158,12 @@ class AuthService(BaseService[User]):
             # Then use TokenService to create tokens
             tokens = token_service.create_token_pair(user.uuid)
         """
-        # Step 1: Find user by email
+        # Step 1: Find user by email using repo directly
+        # to avoid UserNotFoundException leaking email existence
         user = self.user_repo.get_by_email(email)
 
         # Step 2: Check if user exists
         if not user:
-            # Use generic exception to prevent email enumeration
             raise InvalidCredentialsException()
 
         # Step 3: Verify password using bcrypt
@@ -280,4 +213,4 @@ class AuthService(BaseService[User]):
         new_hashed = hash_password(new_password)
 
         # Step 3: Update user password
-        return self.update(user.uuid, {"hashed_password": new_hashed})
+        return self.user_service.update(user.uuid, {"hashed_password": new_hashed})
