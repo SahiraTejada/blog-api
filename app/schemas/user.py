@@ -102,14 +102,6 @@ class UserUpdateSchema(UpdateSchema):
 
 class UserResponseSchema(UserBaseSchema):
 
-    access_token: str = Field(
-        description="JWT access token for API requests",
-        json_schema_extra={"example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."},
-    )
-    refresh_token: str = Field(
-        description="JWT refresh token to renew access tokens",
-        json_schema_extra={"example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."},
-    )
     user: UserBaseSchema = Field(description="Authenticated user information")
 
 
