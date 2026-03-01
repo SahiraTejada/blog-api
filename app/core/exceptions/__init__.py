@@ -38,6 +38,10 @@ from app.core.exceptions.common import (
     RateLimitException,
     ValidationException,
 )
+from app.core.exceptions.category import (
+    CategoryNameExistsException,
+    CategoryNotFoundException,
+)
 from app.core.exceptions.user import (
     EmailExistsException,
     PasswordIncorrectException,
@@ -66,6 +70,9 @@ __all__ = [
     "TokenMissingException",
     "InvalidTokenTypeException",
     "MaxSessionsExceededException",
+    # Category
+    "CategoryNotFoundException",
+    "CategoryNameExistsException",
     # User
     "UserNotFoundException",
     "UsernameExistsException",
