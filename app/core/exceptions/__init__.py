@@ -30,6 +30,10 @@ from app.core.exceptions.auth import (
     TokenRevokedException,
 )
 from app.core.exceptions.base import AppException
+from app.core.exceptions.category import (
+    CategoryNameExistsException,
+    CategoryNotFoundException,
+)
 from app.core.exceptions.common import (
     BadRequestException,
     ConflictException,
@@ -66,6 +70,9 @@ __all__ = [
     "TokenMissingException",
     "InvalidTokenTypeException",
     "MaxSessionsExceededException",
+    # Category
+    "CategoryNotFoundException",
+    "CategoryNameExistsException",
     # User
     "UserNotFoundException",
     "UsernameExistsException",

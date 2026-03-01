@@ -65,7 +65,7 @@ jobs:
     # Step 7: Lint code with Flake8 + bugbear
     - name: Run Flake8 (linting)
       run: |
-        pip install flake8 flake8-bugbear  # Install flake8 + bugbear (catches common bugs)
+        pip install flake8 flake8-bugbear flake8-docstrings  # Install flake8 + bugbear + docstrings
         flake8 . --count --show-source --statistics  # Check for errors, show source and stats
 
     # Step 7: Type checking with Mypy

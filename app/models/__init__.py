@@ -1,5 +1,5 @@
 from app.models.base import Base, BaseModel
-from app.models.categories import Category, post_categories
+from app.models.categories import Category
 from app.models.comments import Comments
 from app.models.follows import Follow
 from app.models.likes import Likes

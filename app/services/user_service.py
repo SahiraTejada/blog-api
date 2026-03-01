@@ -273,6 +273,18 @@ class UserService(BaseService[User]):
 
         return updated_user
 
+    def count_by_role(self, role: UserRole) -> int:
+        """
+        Count users by role.
+
+        Args:
+            role: The role to count (USER, ADMIN)
+
+        Returns:
+            Number of users with the specified role
+        """
+        return self.user_repo.count_by_role(role)
+
     def delete_user(self, user_uuid: UUID) -> None:
         """
         Soft-delete a user.

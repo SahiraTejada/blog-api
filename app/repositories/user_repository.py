@@ -221,7 +221,7 @@ class UserRepository(BaseRepository[User]):
     # USER-SPECIFIC METHODS
     # ========================================================================
 
-    def count_by_role(self, role: str) -> int:
+    def count_by_role(self, role: UserRole) -> int:
         """
         Count users by role.
 

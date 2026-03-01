@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import func
@@ -114,31 +114,34 @@ class CategoryRepository(BaseRepository[Category]):
 
         return query.all()
 
-    def get_all_categories(self,
-                           include_deleted: bool = False,
-                           search_term: Optional[str] = None,
-                           pagination: Optional[PaginationParams] = None,
-                           ) -> Union[List[Category], PaginatedResponse[Category]]:
+    def get_all_categories(
+        self,
+        pagination: PaginationParams,
+        include_deleted: bool = False,
+        search_term: Optional[str] = None,
+    ) -> PaginatedResponse[Category]:
         """
-        Get all active (non-deleted) categories ordered by name.
+        Get all active (non-deleted) categories ordered by name with pagination.
 
         Uses get_multi() from BaseRepository.
 
-        Returns:
-            List of all active category instances ordered by name
+        Args:
+            pagination: Pagination parameters (page, page_size)
+            include_deleted: If True, includes soft-deleted categories
+            search_term: Search in category name and description
 
-        Example:
-            categories = category_repo.get_active_categories()
+        Returns:
+            PaginatedResponse with categories and pagination metadata
         """
         search_fields = ["name", "description"] if search_term else None
 
-        return self.get_multi(
+        return self.get_multi(  # type: ignore[return-value]
             include_deleted=include_deleted,
             order_by="name",
             search_fields=search_fields,
             search_term=search_term,
             pagination=pagination,
-            order_desc=False
+            order_desc=False,
         )
 
     # ========================================================================
@@ -175,30 +178,36 @@ class CategoryRepository(BaseRepository[Category]):
 
     def bulk_create_categories(
         self,
-        names: List[str]
+        categories_data: List[dict]
     ) -> List[Category]:
         """
-        Create multiple categories from a list of names.
+        Create multiple categories from a list of dicts.
 
         Skips categories that already exist.
 
         Args:
-            names: List of category names to create
+            categories_data: List of dicts with "name" (required) and
+                "description" (optional) keys
 
         Returns:
             List of newly created category instances
 
         Example:
             new_categories = category_repo.bulk_create_categories([
-                "Technology", "Programming", "Design"
+                {"name": "Technology", "description": "Tech posts"},
+                {"name": "Programming"},
+                {"name": "Design", "description": "Design posts"},
             ])
         """
         categories_to_create = []
 
-        for name in names:
-            existing = self.get_by_name(name)
+        for data in categories_data:
+            existing = self.get_by_name(data["name"])
             if not existing:
-                categories_to_create.append({"name": name})
+                category_dict: dict = {"name": data["name"]}
+                if data.get("description"):
+                    category_dict["description"] = data["description"]
+                categories_to_create.append(category_dict)
 
         if categories_to_create:
             # Uses create_multi() from BaseRepository
