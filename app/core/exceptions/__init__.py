@@ -30,6 +30,10 @@ from app.core.exceptions.auth import (
     TokenRevokedException,
 )
 from app.core.exceptions.base import AppException
+from app.core.exceptions.category import (
+    CategoryNameExistsException,
+    CategoryNotFoundException,
+)
 from app.core.exceptions.common import (
     BadRequestException,
     ConflictException,
@@ -37,10 +41,6 @@ from app.core.exceptions.common import (
     NotFoundException,
     RateLimitException,
     ValidationException,
-)
-from app.core.exceptions.category import (
-    CategoryNameExistsException,
-    CategoryNotFoundException,
 )
 from app.core.exceptions.user import (
     EmailExistsException,
