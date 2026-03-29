@@ -39,11 +39,6 @@ from app.core.exceptions.comment import (
     CommentPostMismatchException,
     ParentCommentNotFoundException,
 )
-from app.core.exceptions.follow import (
-    AlreadyFollowingException,
-    CannotFollowSelfException,
-    FollowNotFoundException,
-)
 from app.core.exceptions.common import (
     BadRequestException,
     ConflictException,
@@ -51,6 +46,11 @@ from app.core.exceptions.common import (
     NotFoundException,
     RateLimitException,
     ValidationException,
+)
+from app.core.exceptions.follow import (
+    AlreadyFollowingException,
+    CannotFollowSelfException,
+    FollowNotFoundException,
 )
 from app.core.exceptions.user import (
     EmailExistsException,
