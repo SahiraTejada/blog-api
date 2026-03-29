@@ -47,14 +47,14 @@ from app.core.exceptions.common import (
     RateLimitException,
     ValidationException,
 )
-from app.core.exceptions.like import (
-    AlreadyLikedException,
-    LikeNotFoundException,
-)
 from app.core.exceptions.follow import (
     AlreadyFollowingException,
     CannotFollowSelfException,
     FollowNotFoundException,
+)
+from app.core.exceptions.like import (
+    AlreadyLikedException,
+    LikeNotFoundException,
 )
 from app.core.exceptions.user import (
     EmailExistsException,
