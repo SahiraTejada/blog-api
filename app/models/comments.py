@@ -16,7 +16,8 @@ class Comments(BaseModel):
     """
     Comments model for post comments.
 
-    Supports nested comments up to 2 levels (self-referential).
+    Supports unlimited nesting depth via self-referential relationship
+    (social-media-style threading).
     """
 
     __tablename__ = "comments"
