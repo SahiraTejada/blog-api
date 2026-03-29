@@ -129,6 +129,16 @@ class PostResponse(PostBaseSchema, ResponseSchema):
         default=[],
         description="List of categories assigned to the post",
     )
+    likes_count: int = Field(
+        default=0,
+        description="Number of active likes on the post",
+        json_schema_extra={"example": 42},
+    )
+    comments_count: int = Field(
+        default=0,
+        description="Number of active comments on the post",
+        json_schema_extra={"example": 15},
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -148,6 +158,8 @@ class PostResponse(PostBaseSchema, ResponseSchema):
                         "deleted_at": None,
                     }
                 ],
+                "likes_count": 42,
+                "comments_count": 15,
                 "created_at": "2025-01-15T10:30:00Z",
                 "updated_at": "2025-01-15T14:20:00Z",
                 "deleted_at": None,
