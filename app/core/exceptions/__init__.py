@@ -34,6 +34,11 @@ from app.core.exceptions.category import (
     CategoryNameExistsException,
     CategoryNotFoundException,
 )
+from app.core.exceptions.comment import (
+    CommentNotFoundException,
+    CommentPostMismatchException,
+    ParentCommentNotFoundException,
+)
 from app.core.exceptions.common import (
     BadRequestException,
     ConflictException,
@@ -73,6 +78,10 @@ __all__ = [
     # Category
     "CategoryNotFoundException",
     "CategoryNameExistsException",
+    # Comment
+    "CommentNotFoundException",
+    "ParentCommentNotFoundException",
+    "CommentPostMismatchException",
     # User
     "UserNotFoundException",
     "UsernameExistsException",
