@@ -1,7 +1,6 @@
 from app.repositories.base_repository import BaseRepository
 from app.repositories.category_repository import CategoryRepository
 from app.repositories.comment_repository import CommentRepository
-
 from app.repositories.follows_repository import FollowRepository
 from app.repositories.likes_repository import LikesRepository
 from app.repositories.post_repository import PostRepository
