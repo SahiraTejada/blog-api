@@ -47,6 +47,11 @@ from app.core.exceptions.common import (
     RateLimitException,
     ValidationException,
 )
+from app.core.exceptions.follow import (
+    AlreadyFollowingException,
+    CannotFollowSelfException,
+    FollowNotFoundException,
+)
 from app.core.exceptions.user import (
     EmailExistsException,
     PasswordIncorrectException,
@@ -82,6 +87,10 @@ __all__ = [
     "CommentNotFoundException",
     "ParentCommentNotFoundException",
     "CommentPostMismatchException",
+    # Follow
+    "FollowNotFoundException",
+    "AlreadyFollowingException",
+    "CannotFollowSelfException",
     # User
     "UserNotFoundException",
     "UsernameExistsException",
