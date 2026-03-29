@@ -38,6 +38,17 @@ from app.schemas.comment import (
     CommentWithAuthorResponse,
 )
 
+# Follow schemas
+from app.schemas.follows import (
+    FollowCountResponse,
+    FollowCreateSchema,
+    FollowListRequest,
+    FollowListResponse,
+    FollowResponse,
+    FollowStatusResponse,
+    FollowWithUserResponse,
+)
+
 # User schemas
 from app.schemas.user import (
     UserBaseSchema,
@@ -76,10 +87,18 @@ __all__ = [
     "CommentListRequest",
     "CommentListResponse",
     "CommentCountResponse",
+    # Follow schemas
+    "FollowCreateSchema",
+    "FollowResponse",
+    "FollowWithUserResponse",
+    "FollowStatusResponse",
+    "FollowCountResponse",
+    "FollowListRequest",
+    "FollowListResponse",
     # User schemas
     "UserUpdateSchema",
     "UserListRequest",
     "UserListResponse",
     "UserPublicSchema",
-    "UserBaseSchema"
+    "UserBaseSchema",
 ]
