@@ -52,6 +52,10 @@ from app.core.exceptions.follow import (
     CannotFollowSelfException,
     FollowNotFoundException,
 )
+from app.core.exceptions.like import (
+    AlreadyLikedException,
+    LikeNotFoundException,
+)
 from app.core.exceptions.user import (
     EmailExistsException,
     PasswordIncorrectException,
