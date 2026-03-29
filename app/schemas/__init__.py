@@ -26,6 +26,18 @@ from app.schemas.base import (
     UUIDSchema,
 )
 
+# Comment schemas
+from app.schemas.comment import (
+    CommentCountResponse,
+    CommentCreateSchema,
+    CommentListRequest,
+    CommentListResponse,
+    CommentResponse,
+    CommentTreeNode,
+    CommentUpdateSchema,
+    CommentWithAuthorResponse,
+)
+
 # User schemas
 from app.schemas.user import (
     UserBaseSchema,
@@ -55,6 +67,15 @@ __all__ = [
     "BulkOperationResponse",
     "StatusSchema",
     "UUIDListSchema",
+    # Comment schemas
+    "CommentCreateSchema",
+    "CommentUpdateSchema",
+    "CommentResponse",
+    "CommentWithAuthorResponse",
+    "CommentTreeNode",
+    "CommentListRequest",
+    "CommentListResponse",
+    "CommentCountResponse",
     # User schemas
     "UserUpdateSchema",
     "UserListRequest",
