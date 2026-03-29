@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.routes import auth, categories, health, posts, users
+from app.api.v1.routes import auth, categories, comments, health, posts, users
 
 # Create main API router
 api_router = APIRouter()
@@ -11,7 +11,7 @@ api_router.include_router(auth.router, tags=["Authentication"])
 api_router.include_router(users.router, tags=["Users"])
 api_router.include_router(categories.router, tags=["Categories"])
 api_router.include_router(posts.router, tags=["Posts"])
-# api_router.include_router(comments.router, prefix="/comments", tags=["Comments"])
+api_router.include_router(comments.router, tags=["Comments"])
 # api_router.include_router(likes.router, prefix="/likes", tags=["Likes"])
 # api_router.include_router(follow.router, prefix="/follow", tags=["Follow"])
 
