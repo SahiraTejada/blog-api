@@ -79,38 +79,6 @@ class Post(BaseModel):
         back_populates="posts"
     )
 
-    @property
-    def likes_count(self) -> int:
-        """Count active likes using SQL COUNT instead of loading all objects."""
-        from sqlalchemy import func
-        from sqlalchemy.orm import object_session
-
-        from app.models.likes import Likes
-        session = object_session(self)
-        if session is None:
-            return 0
-        result = session.query(func.count()).filter(
-            Likes.post_uuid == self.uuid,
-            Likes.deleted_at.is_(None),
-        ).scalar()
-        return result or 0
-
-    @property
-    def comments_count(self) -> int:
-        """Count active comments using SQL COUNT instead of loading all objects."""
-        from sqlalchemy import func
-        from sqlalchemy.orm import object_session
-
-        from app.models.comments import Comments as CommentsModel
-        session = object_session(self)
-        if session is None:
-            return 0
-        result = session.query(func.count()).filter(
-            CommentsModel.post_uuid == self.uuid,
-            CommentsModel.deleted_at.is_(None),
-        ).scalar()
-        return result or 0
-
     def __repr__(self) -> str:
         """Return string representation of the model."""
         return f"<{self.__class__.__name__}(title={self.title},status={self.status.value})>"

@@ -183,7 +183,12 @@ class PostRepository(BaseRepository[Post]):
         search_fields = ["title", "content"] if search_term else None
 
         if category_uuid:
-            base_query = self.db.query(self.model).join(self.model.categories).filter(Category.uuid == category_uuid)
+            base_query = (
+                self.db.query(self.model)
+                .join(self.model.categories)
+                .filter(Category.uuid == category_uuid)
+                .distinct()
+            )
 
         return self.get_multi(
             search_fields=search_fields,

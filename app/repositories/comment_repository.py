@@ -193,6 +193,34 @@ class CommentRepository(BaseRepository[Comments]):
         """
         return self.count(filters={"post_uuid": post_uuid})
 
+    def count_by_post_batch(self, post_uuids: List[UUID]) -> Dict[UUID, int]:
+        """
+        Count total comments for multiple posts in a single query.
+
+        Args:
+            post_uuids: List of post UUIDs
+
+        Returns:
+            Dictionary mapping post_uuid to comment count
+        """
+        if not post_uuids:
+            return {}
+
+        from sqlalchemy import and_, func
+
+        rows = self.db.query(
+            Comments.post_uuid,
+            func.count().label("cnt"),
+        ).filter(
+            and_(
+                Comments.post_uuid.in_(post_uuids),
+                Comments.deleted_at.is_(None),
+            )
+        ).group_by(Comments.post_uuid).all()
+
+        counts = {row[0]: row[1] for row in rows}
+        return {uuid: counts.get(uuid, 0) for uuid in post_uuids}
+
     def count_by_author(self, author_uuid: UUID) -> int:
         """
         Count total comments by a user.
@@ -223,8 +251,9 @@ class CommentRepository(BaseRepository[Comments]):
 
     def get_comment_depth(self, comment_uuid: UUID) -> int:
         """
-        Calculate the nesting depth of a comment by walking up the parent chain.
+        Calculate the nesting depth of a comment using a recursive CTE.
 
+        Executes a single SQL query instead of O(N) queries.
         Depth 0 = top-level comment, depth 1 = reply to top-level, etc.
 
         Args:
@@ -233,17 +262,32 @@ class CommentRepository(BaseRepository[Comments]):
         Returns:
             The nesting depth (0-based)
         """
-        depth = 0
-        current_uuid = comment_uuid
+        from sqlalchemy import func, literal
 
-        while current_uuid:
-            comment = self.get_by_uuid(current_uuid)
-            if not comment or not comment.parent_comment_uuid:
-                break
-            depth += 1
-            current_uuid = comment.parent_comment_uuid
+        # Base case: the target comment at depth 0
+        base = (
+            self.db.query(
+                Comments.uuid,
+                Comments.parent_comment_uuid,
+                literal(0).label("depth"),
+            )
+            .filter(Comments.uuid == comment_uuid)
+            .cte(name="comment_chain", recursive=True)
+        )
 
-        return depth
+        # Recursive step: walk up to the parent
+        recursive = (
+            self.db.query(
+                Comments.uuid,
+                Comments.parent_comment_uuid,
+                (base.c.depth + 1).label("depth"),
+            )
+            .join(base, Comments.uuid == base.c.parent_comment_uuid)
+        )
+
+        cte = base.union_all(recursive)
+        result = self.db.query(func.max(cte.c.depth)).scalar()
+        return result or 0
 
     def parent_exists(self, parent_comment_uuid: UUID) -> bool:
         """

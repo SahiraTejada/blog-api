@@ -18,6 +18,9 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import AuthContext, require_user
 from app.database.session import get_db
+from app.models.posts import Post
+from app.repositories.comment_repository import CommentRepository
+from app.repositories.likes_repository import LikesRepository
 from app.schemas.base import SuccessResponse
 from app.schemas.post import (
     PostCreateSchema,
@@ -29,6 +32,16 @@ from app.schemas.post import (
 from app.services.post_service import PostService
 
 router = APIRouter(prefix="/posts", tags=["Posts"])
+
+
+def _build_post_response(post: Post, db: Session) -> PostResponse:
+    """Build a PostResponse with computed likes and comments counts."""
+    likes_repo = LikesRepository(db)
+    comment_repo = CommentRepository(db)
+    response = PostResponse.model_validate(post)
+    response.likes_count = likes_repo.count_post_likes(post.uuid)
+    response.comments_count = comment_repo.count_by_post(post.uuid)
+    return response
 
 
 # ============================================================================
@@ -73,7 +86,7 @@ async def create_post(
         category_uuids=data.category_uuids,
     )
 
-    return PostResponse.model_validate(post)
+    return _build_post_response(post, db)
 
 
 # ============================================================================
@@ -114,8 +127,22 @@ async def list_posts(
         author_uuid=filters.author_uuid,
     )
 
+    # Batch compute counts to avoid N+1 queries
+    post_uuids = [post.uuid for post in result.data]
+    likes_repo = LikesRepository(db)
+    comment_repo = CommentRepository(db)
+    likes_counts = likes_repo.count_post_likes_batch(post_uuids)
+    comments_counts = comment_repo.count_by_post_batch(post_uuids)
+
+    post_responses = []
+    for post in result.data:
+        response = PostResponse.model_validate(post)
+        response.likes_count = likes_counts.get(post.uuid, 0)
+        response.comments_count = comments_counts.get(post.uuid, 0)
+        post_responses.append(response)
+
     return PostListResponse(
-        data=[PostResponse.model_validate(post) for post in result.data],
+        data=post_responses,
         pagination=result.pagination,
     )
 
@@ -143,7 +170,7 @@ async def get_post(
 
     post = post_service.get_by_post_uuid(post_uuid)
 
-    return PostResponse.model_validate(post)
+    return _build_post_response(post, db)
 
 
 # ============================================================================
@@ -190,7 +217,7 @@ async def update_post(
         current_user=auth.user,
     )
 
-    return PostResponse.model_validate(updated_post)
+    return _build_post_response(updated_post, db)
 
 
 # ============================================================================

@@ -78,4 +78,4 @@ class Follow(Base):
 
     def __repr__(self) -> str:
         """Return string representation of the model."""
-        return f"<{self.__class__.__name__}(follower_uuid={self.follower_uuid},followee_uuid={self.followee_uuid}>"
+        return f"<{self.__class__.__name__}(follower_uuid={self.follower_uuid},followee_uuid={self.followee_uuid})>"

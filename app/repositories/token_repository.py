@@ -4,7 +4,7 @@ from app.utils.dates import utc_now
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from app.models import Token, TokenType
@@ -98,6 +98,8 @@ class TokenRepository(BaseRepository[Token]):
         """
         Get all tokens for a specific user.
 
+        Filters are applied at the SQL level for efficiency.
+
         Args:
             user_uuid: The user's UUID
             token_type: Optional filter by token type
@@ -114,26 +116,21 @@ class TokenRepository(BaseRepository[Token]):
                 token_type=TokenType.ACCESS
             )
         """
-        filters: Dict[str, Any] = {"user_uuid": user_uuid}
-
-        if token_type:
-            filters["type"] = token_type
-
-        tokens = self.filter_by(
-            include_deleted=False,
-            **filters
+        query = self.db.query(self.model).filter(
+            self.model.user_uuid == user_uuid,
+            self.model.deleted_at.is_(None),
         )
 
-        # Filter by revoked/expired status
-        result = []
-        for token in tokens:
-            if not include_revoked and token.is_revoked:
-                continue
-            if not include_expired and token.is_expired:
-                continue
-            result.append(token)
+        if token_type:
+            query = query.filter(self.model.type == token_type)
 
-        return result
+        if not include_revoked:
+            query = query.filter(self.model.revoked_at.is_(None))
+
+        if not include_expired:
+            query = query.filter(self.model.expires_at > utc_now())
+
+        return query.all()
 
     def count_active_sessions(
         self,
@@ -143,7 +140,7 @@ class TokenRepository(BaseRepository[Token]):
         """
         Count active (valid) sessions for a user.
 
-        Useful for enforcing maximum concurrent sessions.
+        Uses SQL COUNT for efficiency instead of loading all tokens.
 
         Args:
             user_uuid: The user's UUID
@@ -157,13 +154,13 @@ class TokenRepository(BaseRepository[Token]):
             if token_repo.count_active_sessions(user.uuid) >= 5:
                 raise HTTPException(429, "Too many active sessions")
         """
-        tokens = self.get_user_tokens(
-            user_uuid=user_uuid,
-            token_type=token_type,
-            include_revoked=False,
-            include_expired=False
-        )
-        return len(tokens)
+        return self.db.query(func.count()).select_from(self.model).filter(
+            self.model.user_uuid == user_uuid,
+            self.model.type == token_type,
+            self.model.revoked_at.is_(None),
+            self.model.deleted_at.is_(None),
+            self.model.expires_at > utc_now(),
+        ).scalar() or 0
 
     # ====================================================================
     # TOKEN REVOCATION
@@ -285,16 +282,14 @@ class TokenRepository(BaseRepository[Token]):
 
     def cleanup_expired(
         self,
-        hard_delete: bool = True,
         older_than_days: int = 7
     ) -> int:
         """
-        Delete or soft-delete expired tokens.
+        Permanently delete expired tokens in bulk.
 
         This should be run periodically (cron job) to keep DB clean.
 
         Args:
-            hard_delete: If True, permanently delete. Default: True
             older_than_days: Only delete tokens expired for X days
 
         Returns:
@@ -307,31 +302,24 @@ class TokenRepository(BaseRepository[Token]):
         """
         cutoff_date = utc_now() - timedelta(days=older_than_days)
 
-        # Find expired tokens
-        expired_tokens = self.db.query(self.model).filter(
+        count = self.db.query(self.model).filter(
             and_(
                 self.model.expires_at < cutoff_date,
-                self.model.deleted_at.is_(None)
+                self.model.deleted_at.is_(None),
             )
-        ).all()
+        ).delete(synchronize_session="fetch")
 
-        count = 0
-        for token in expired_tokens:
-            if self.delete(token.uuid, hard_delete=hard_delete):
-                count += 1
-
+        self.db.commit()
         return count
 
     def cleanup_revoked(
         self,
-        hard_delete: bool = True,
         older_than_days: int = 30
     ) -> int:
         """
-        Delete revoked tokens older than X days.
+        Permanently delete revoked tokens older than X days in bulk.
 
         Args:
-            hard_delete: If True, permanently delete
             older_than_days: Only delete tokens revoked X days ago
 
         Returns:
@@ -343,19 +331,15 @@ class TokenRepository(BaseRepository[Token]):
         """
         cutoff_date = utc_now() - timedelta(days=older_than_days)
 
-        revoked_tokens = self.db.query(self.model).filter(
+        count = self.db.query(self.model).filter(
             and_(
                 self.model.revoked_at.isnot(None),
                 self.model.revoked_at < cutoff_date,
-                self.model.deleted_at.is_(None)
+                self.model.deleted_at.is_(None),
             )
-        ).all()
+        ).delete(synchronize_session="fetch")
 
-        count = 0
-        for token in revoked_tokens:
-            if self.delete(token.uuid, hard_delete=hard_delete):
-                count += 1
-
+        self.db.commit()
         return count
 
     # ====================================================================

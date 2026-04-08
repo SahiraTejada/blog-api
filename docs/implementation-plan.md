@@ -13,8 +13,7 @@
 3. [Seguridad - Hardening](#3-seguridad---hardening)
 4. [Observabilidad - Logging y Monitoring](#4-observabilidad---logging-y-monitoring)
 5. [Mejoras de Codigo](#5-mejoras-de-codigo)
-6. [Containerizacion](#6-containerizacion)
-7. [Archivos Muertos](#7-archivos-muertos)
+6. [Archivos Muertos](#6-archivos-muertos)
 
 ---
 
@@ -496,29 +495,7 @@ Llamar `setup_logging()` al inicio del lifespan en `app/main.py`.
 
 ---
 
-### 4.2 Request ID middleware
-
-**Nuevo archivo:** `app/api/middleware/request_id.py`
-
-```python
-import uuid
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
-
-
-class RequestIDMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next) -> Response:
-        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-        request.state.request_id = request_id
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request_id
-        return response
-```
-
----
-
-### 4.3 Health check con verificacion de base de datos
+### 4.2 Health check con verificacion de base de datos
 
 **Archivo:** `app/api/v1/routes/health.py`
 
@@ -550,26 +527,6 @@ async def health_check(db: Session = Depends(get_db)):
 ```
 
 Crear `HealthResponse` en `app/schemas/` o directamente en el archivo de health.
-
----
-
-### 4.4 Configurar Sentry
-
-**Dependencia:** `sentry-sdk` ya esta en `requirements.txt`.
-**Archivo:** `app/main.py`
-
-```python
-import sentry_sdk
-
-if not settings.DEBUG and hasattr(settings, "SENTRY_DSN"):
-    sentry_sdk.init(
-        dsn=settings.SENTRY_DSN,
-        traces_sample_rate=0.1,
-        environment="production",
-    )
-```
-
-Agregar `SENTRY_DSN: Optional[str] = None` a `app/core/config.py`.
 
 ---
 
@@ -659,87 +616,7 @@ class TokenType(enum.Enum):
 
 ---
 
-## 6. Containerizacion
-
-### 6.1 Crear Dockerfile multi-stage
-
-**Nuevo archivo:** `Dockerfile`
-
-```dockerfile
-# Stage 1: Builder
-FROM python:3.12-slim AS builder
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
-
-# Stage 2: Runtime
-FROM python:3.12-slim
-
-WORKDIR /app
-COPY --from=builder /install /usr/local
-COPY . .
-
-EXPOSE 8000
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
----
-
-### 6.2 Crear docker-compose para desarrollo
-
-**Nuevo archivo:** `docker-compose.yml`
-
-```yaml
-services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: blog
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    env_file: .env
-    depends_on:
-      - db
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - .:/app
-
-volumes:
-  pgdata:
-```
-
----
-
-### 6.3 Crear `.dockerignore`
-
-**Nuevo archivo:** `.dockerignore`
-
-```
-.venv/
-__pycache__/
-*.pyc
-.env
-.git/
-.mypy_cache/
-.pytest_cache/
-docs/
-*.md
-```
-
----
-
-## 7. Archivos Muertos
+## 6. Archivos Muertos
 
 ### Archivos vacios que deben implementarse o eliminarse
 
@@ -776,27 +653,20 @@ docs/
 
 ### Prioridad 4 - Observabilidad
 14. Implementar `logger.py` con configuracion estructurada
-15. Request ID middleware
-16. Health check con DB verification
-17. Configurar Sentry
+15. Health check con DB verification
 
 ### Prioridad 5 - Mejoras de codigo
-18. Fix `distinct()` en post repository
-19. Fix `uvicorn.run` con config dinamica
-20. Property `full_name` duplicada
-21. `foreign_keys` explicito en Likes model
-22. Pydantic v2 `model_config` en Settings
-23. Eliminar archivos muertos
+16. Fix `distinct()` en post repository
+17. Fix `uvicorn.run` con config dinamica
+18. Property `full_name` duplicada
+19. `foreign_keys` explicito en Likes model
+20. Pydantic v2 `model_config` en Settings
+21. Eliminar archivos muertos
 
-### Prioridad 6 - Containerizacion
-24. Dockerfile multi-stage
-25. docker-compose.yml
-26. .dockerignore
-
-### Prioridad 7 - Opcional / futuro
-27. Recursive CTE para `get_comment_depth()`
-28. Window functions para paginacion
-29. Extraer enums a modulo compartido
+### Prioridad 6 - Opcional / futuro
+22. Recursive CTE para `get_comment_depth()`
+23. Window functions para paginacion
+24. Extraer enums a modulo compartido
 
 ---
 
@@ -807,8 +677,7 @@ docs/
 | Bug fixes | 5 | 4 archivos |
 | Performance | 6 | 3 archivos |
 | Seguridad | 7 | 4 archivos + 2 nuevos |
-| Observabilidad | 4 | 3 archivos + 1 nuevo |
+| Observabilidad | 2 | 2 archivos |
 | Mejoras codigo | 6 | 6 archivos |
-| Containerizacion | 3 | 3 archivos nuevos |
 | Limpieza | 3 | 3 archivos eliminados |
-| **Total** | **34 items** | **~16 archivos** |
+| **Total** | **29 items** | **~12 archivos** |

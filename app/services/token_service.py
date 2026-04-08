@@ -128,12 +128,12 @@ class TokenService(BaseService[Token]):
         # Calculate expiration time in UTC
         expires_at = utc_now() + expires_delta
 
-        # Build the JWT payload with standard claims
+        # Build the JWT payload with standard claims (RFC 7519 NumericDate)
         payload: Dict[str, Any] = {
-            "sub": str(user_uuid),          # Subject: user identifier
-            "type": token_type.value,        # Token type for validation
-            "exp": expires_at,               # Expiration time
-            "iat": utc_now()  # Issued at time
+            "sub": str(user_uuid),                  # Subject: user identifier
+            "type": token_type.value,                # Token type for validation
+            "exp": int(expires_at.timestamp()),      # Expiration time (Unix timestamp)
+            "iat": int(utc_now().timestamp()),       # Issued at time (Unix timestamp)
         }
 
         # Encode the JWT using the secret key and algorithm from settings

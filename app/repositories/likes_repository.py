@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 from app.utils.dates import utc_now
-from typing import TYPE_CHECKING, List, Optional, Union, overload
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, overload
 from uuid import UUID
 
 from sqlalchemy import and_, func
@@ -247,6 +247,32 @@ class LikesRepository:
                 Likes.deleted_at.is_(None),
             )
         ).scalar() or 0
+
+    def count_post_likes_batch(self, post_uuids: List[UUID]) -> Dict[UUID, int]:
+        """
+        Count active likes for multiple posts in a single query.
+
+        Args:
+            post_uuids: List of post UUIDs
+
+        Returns:
+            Dictionary mapping post_uuid to like count
+        """
+        if not post_uuids:
+            return {}
+
+        rows = self.db.query(
+            Likes.post_uuid,
+            func.count().label("cnt"),
+        ).filter(
+            and_(
+                Likes.post_uuid.in_(post_uuids),
+                Likes.deleted_at.is_(None),
+            )
+        ).group_by(Likes.post_uuid).all()
+
+        counts = {row[0]: row[1] for row in rows}
+        return {uuid: counts.get(uuid, 0) for uuid in post_uuids}
 
     def count_user_likes(self, user_uuid: UUID) -> int:
         """

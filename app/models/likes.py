@@ -55,10 +55,12 @@ class Likes(Base):
     # Relationships
     user: Mapped["User"] = relationship(
         "User",
+        foreign_keys=[user_uuid],
         back_populates="likes"
     )
     post: Mapped["Post"] = relationship(
         "Post",
+        foreign_keys=[post_uuid],
         back_populates="likes"
     )
 

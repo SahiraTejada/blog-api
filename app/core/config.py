@@ -1,5 +1,5 @@
 from pydantic import field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str
 
-    DEBUG: bool = True
+    DEBUG: bool = False
     # JWT
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
@@ -17,10 +17,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS
-    ALLOWED_ORIGINS: list[str] = ["*"]
+    ALLOWED_ORIGINS: list[str] = []
 
     # Trusted hosts (separate from CORS origins)
-    ALLOWED_HOSTS: list[str] = ["*"]
+    ALLOWED_HOSTS: list[str] = []
 
     @field_validator("SECRET_KEY")
     @classmethod
@@ -30,8 +30,15 @@ class Settings(BaseSettings):
             raise ValueError("SECRET_KEY must be at least 32 characters long")
         return v
 
-    class Config:
-        env_file = ".env"
+    @field_validator("ALLOWED_ORIGINS")
+    @classmethod
+    def validate_origins(cls, v: list[str]) -> list[str]:
+        """Ensure ALLOWED_ORIGINS does not mix '*' with specific origins."""
+        if "*" in v and len(v) > 1:
+            raise ValueError("ALLOWED_ORIGINS cannot mix '*' with specific origins")
+        return v
+
+    model_config = SettingsConfigDict(env_file=".env")
 
 
 settings = Settings()
