@@ -16,7 +16,6 @@ Benefits:
 
 from __future__ import annotations
 
-from app.utils.dates import utc_now
 from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, Type, Union, overload
 from uuid import UUID
 
@@ -26,6 +25,7 @@ from sqlalchemy.orm import Session
 
 from app.models.base import ModelType
 from app.schemas.base import PaginationParams
+from app.utils.dates import utc_now
 from app.utils.pagination import paginate
 
 if TYPE_CHECKING:

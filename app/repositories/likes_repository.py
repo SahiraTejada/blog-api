@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from app.models.likes import Likes
 from app.schemas.base import PaginationParams
+from app.utils.dates import utc_now
 from app.utils.pagination import paginate
 
 logger = logging.getLogger(__name__)

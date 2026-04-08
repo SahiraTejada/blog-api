@@ -1,6 +1,4 @@
 from datetime import timedelta
-
-from app.utils.dates import utc_now
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -9,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Token, TokenType
 from app.repositories.base_repository import BaseRepository
+from app.utils.dates import utc_now
 
 
 class TokenRepository(BaseRepository[Token]):

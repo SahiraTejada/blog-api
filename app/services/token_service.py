@@ -24,8 +24,6 @@ Security Considerations:
 """
 
 from datetime import datetime, timedelta
-
-from app.utils.dates import utc_now
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -42,6 +40,7 @@ from app.core.exceptions import (
 from app.models.tokens import Token, TokenType
 from app.repositories.token_repository import TokenRepository
 from app.services.base_service import BaseService
+from app.utils.dates import utc_now
 
 
 class TokenService(BaseService[Token]):
