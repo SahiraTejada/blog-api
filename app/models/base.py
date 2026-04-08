@@ -1,4 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime
+
+from app.utils.dates import utc_now
 from typing import Optional, TypeVar
 from uuid import UUID as UUID_TYPE
 from uuid import uuid4
@@ -28,13 +30,13 @@ class BaseModel(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=utc_now,
         nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=utc_now,
+        onupdate=utc_now,
         nullable=False
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(

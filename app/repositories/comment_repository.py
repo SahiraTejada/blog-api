@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, overload
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -29,6 +29,16 @@ class CommentRepository(BaseRepository[Comments]):
     # COMMENT-SPECIFIC READ METHODS
     # ========================================================================
 
+    @overload
+    def get_by_post_uuid(
+        self, post_uuid: UUID, pagination: PaginationParams, include_deleted: bool = ...,
+    ) -> PaginatedResponse[Comments]: ...
+
+    @overload
+    def get_by_post_uuid(
+        self, post_uuid: UUID, pagination: None = ..., include_deleted: bool = ...,
+    ) -> List[Comments]: ...
+
     def get_by_post_uuid(
         self,
         post_uuid: UUID,
@@ -53,6 +63,16 @@ class CommentRepository(BaseRepository[Comments]):
             order_by="created_at",
             order_desc=False,
         )
+
+    @overload
+    def get_replies(
+        self, parent_comment_uuid: UUID, pagination: PaginationParams, include_deleted: bool = ...,
+    ) -> PaginatedResponse[Comments]: ...
+
+    @overload
+    def get_replies(
+        self, parent_comment_uuid: UUID, pagination: None = ..., include_deleted: bool = ...,
+    ) -> List[Comments]: ...
 
     def get_replies(
         self,
@@ -121,6 +141,16 @@ class CommentRepository(BaseRepository[Comments]):
                 roots.append(node)
 
         return roots
+
+    @overload
+    def get_by_author_uuid(
+        self, author_uuid: UUID, pagination: PaginationParams, include_deleted: bool = ...,
+    ) -> PaginatedResponse[Comments]: ...
+
+    @overload
+    def get_by_author_uuid(
+        self, author_uuid: UUID, pagination: None = ..., include_deleted: bool = ...,
+    ) -> List[Comments]: ...
 
     def get_by_author_uuid(
         self,

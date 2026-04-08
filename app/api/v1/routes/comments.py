@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import AuthContext, require_user
 from app.database.session import get_db
-from app.schemas.base import PaginatedResponse, PaginationParams, SuccessResponse
+from app.schemas.base import PaginationParams, SuccessResponse
 from app.schemas.comment import (
     CommentCountResponse,
     CommentCreateSchema,
@@ -117,8 +117,6 @@ async def list_post_comments(
         post_uuid=post_uuid,
         pagination=pagination,
     )
-
-    assert isinstance(result, PaginatedResponse)
 
     return CommentListResponse(
         data=[CommentWithAuthorResponse.model_validate(c) for c in result.data],
@@ -239,8 +237,6 @@ async def get_comment_replies(
         pagination=pagination,
     )
 
-    assert isinstance(result, PaginatedResponse)
-
     return CommentListResponse(
         data=[CommentWithAuthorResponse.model_validate(c) for c in result.data],
         pagination=result.pagination,
@@ -260,6 +256,7 @@ async def get_comment_replies(
     responses={
         200: {"description": "Comment updated successfully"},
         401: {"description": "Invalid or missing token"},
+        403: {"description": "Not the comment author or admin"},
         404: {"description": "Comment not found"},
         422: {"description": "Validation error"},
     },
@@ -282,6 +279,7 @@ async def update_comment(
     updated_comment = comment_service.update_comment(
         comment_uuid=comment_uuid,
         update_data=update_data.model_dump(exclude_unset=True),
+        current_user=auth.user,
     )
 
     return CommentResponse.model_validate(updated_comment)
@@ -300,6 +298,7 @@ async def update_comment(
     responses={
         200: {"description": "Comment deleted successfully"},
         401: {"description": "Invalid or missing token"},
+        403: {"description": "Not the comment author or admin"},
         404: {"description": "Comment not found"},
     },
 )
@@ -316,7 +315,10 @@ async def delete_comment(
     """
     comment_service = CommentService(db)
 
-    comment_service.delete_comment(comment_uuid)
+    comment_service.delete_comment(
+        comment_uuid=comment_uuid,
+        current_user=auth.user,
+    )
 
     return SuccessResponse(message="Comment deleted successfully")
 

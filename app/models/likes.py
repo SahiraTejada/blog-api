@@ -1,4 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime
+
+from app.utils.dates import utc_now
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID as UUID_TYPE
 
@@ -37,7 +39,7 @@ class Likes(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=utc_now,
         nullable=False
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(

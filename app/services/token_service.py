@@ -23,7 +23,9 @@ Security Considerations:
     - Suspicious token detection based on IP changes
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+
+from app.utils.dates import utc_now
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -124,14 +126,14 @@ class TokenService(BaseService[Token]):
             create_refresh_token() to create and store tokens.
         """
         # Calculate expiration time in UTC
-        expires_at = datetime.now(timezone.utc) + expires_delta
+        expires_at = utc_now() + expires_delta
 
         # Build the JWT payload with standard claims
         payload: Dict[str, Any] = {
             "sub": str(user_uuid),          # Subject: user identifier
             "type": token_type.value,        # Token type for validation
             "exp": expires_at,               # Expiration time
-            "iat": datetime.now(timezone.utc)  # Issued at time
+            "iat": utc_now()  # Issued at time
         }
 
         # Encode the JWT using the secret key and algorithm from settings

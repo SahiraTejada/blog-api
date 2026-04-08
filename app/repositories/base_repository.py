@@ -16,8 +16,8 @@ Benefits:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, Type, Union
+from app.utils.dates import utc_now
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, Type, Union, overload
 from uuid import UUID
 
 from sqlalchemy import func, or_
@@ -180,6 +180,32 @@ class BaseRepository(Generic[ModelType]):
 
         return query.first()
 
+    @overload
+    def get_multi(
+        self,
+        pagination: PaginationParams,
+        include_deleted: bool = ...,
+        filters: Optional[Dict[str, Any]] = ...,
+        search_fields: Optional[List[str]] = ...,
+        search_term: Optional[str] = ...,
+        order_by: Optional[str] = ...,
+        order_desc: bool = ...,
+        base_query: Any = ...,
+    ) -> PaginatedResponse[ModelType]: ...
+
+    @overload
+    def get_multi(
+        self,
+        pagination: None = ...,
+        include_deleted: bool = ...,
+        filters: Optional[Dict[str, Any]] = ...,
+        search_fields: Optional[List[str]] = ...,
+        search_term: Optional[str] = ...,
+        order_by: Optional[str] = ...,
+        order_desc: bool = ...,
+        base_query: Any = ...,
+    ) -> List[ModelType]: ...
+
     def get_multi(
         self,
         pagination: Optional[PaginationParams] = None,
@@ -189,7 +215,7 @@ class BaseRepository(Generic[ModelType]):
         search_term: Optional[str] = None,
         order_by: Optional[str] = None,
         order_desc: bool = False,
-        base_query=None,
+        base_query: Any = None,
     ) -> Union[List[ModelType], PaginatedResponse[ModelType]]:
         """
         Retrieve records matching the criteria with filtering, searching, and sorting.
@@ -620,7 +646,7 @@ class BaseRepository(Generic[ModelType]):
             query = self._apply_soft_delete_filter(query)
 
             # Add updated_at timestamp
-            update_values = {**obj_in, "updated_at": datetime.now(timezone.utc)}
+            update_values = {**obj_in, "updated_at": utc_now()}
 
             # Perform the bulk update
             count = query.update(update_values, synchronize_session=False)  # type: ignore[arg-type]
@@ -683,7 +709,7 @@ class BaseRepository(Generic[ModelType]):
                 self.db.delete(db_obj)
             else:
                 # Soft delete: just set the deleted_at timestamp
-                setattr(db_obj, "deleted_at", datetime.now(timezone.utc))
+                setattr(db_obj, "deleted_at", utc_now())
 
             self.db.flush()
             return True
@@ -732,7 +758,7 @@ class BaseRepository(Generic[ModelType]):
             if hard_delete:
                 count = query.delete(synchronize_session=False)
             else:
-                count = query.update({"deleted_at": datetime.now(timezone.utc)}, synchronize_session=False)
+                count = query.update({"deleted_at": utc_now()}, synchronize_session=False)
 
             self.db.flush()
             return count

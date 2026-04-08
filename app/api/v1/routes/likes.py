@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import AuthContext, require_user
 from app.database.session import get_db
-from app.schemas.base import PaginatedResponse, SuccessResponse
+from app.schemas.base import SuccessResponse
 from app.schemas.likes import (
     LikeCountResponse,
     LikeCreateSchema,
@@ -214,8 +214,6 @@ async def list_post_likes(
         pagination=pagination,
     )
 
-    assert isinstance(result, PaginatedResponse)
-
     return LikeListResponse(
         data=[
             LikeWithUserResponse(
@@ -256,8 +254,6 @@ async def list_user_likes(
         user_uuid=user_uuid,
         pagination=pagination,
     )
-
-    assert isinstance(result, PaginatedResponse)
 
     return LikeListResponse(
         data=[

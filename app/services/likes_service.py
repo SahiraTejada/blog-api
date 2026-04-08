@@ -18,7 +18,7 @@ The LikesService handles:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union, overload
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -81,6 +81,10 @@ class LikesService:
             PostNotFoundException: If the post does not exist
             AlreadyLikedException: If the user already liked this post
         """
+        user = self.user_repo.get_by_uuid(user_uuid)
+        if not user:
+            raise UserNotFoundException(identifier=str(user_uuid))
+
         post = self.post_repo.get_by_uuid(post_uuid)
         if not post:
             raise PostNotFoundException(identifier=str(post_uuid))
@@ -152,6 +156,12 @@ class LikesService:
         """
         return self.likes_repo.has_liked(user_uuid, post_uuid)
 
+    @overload
+    def get_post_likes(self, post_uuid: UUID, pagination: PaginationParams) -> PaginatedResponse[Likes]: ...
+
+    @overload
+    def get_post_likes(self, post_uuid: UUID, pagination: None = ...) -> List[Likes]: ...
+
     def get_post_likes(
         self,
         post_uuid: UUID,
@@ -178,6 +188,12 @@ class LikesService:
             post_uuid=post_uuid,
             pagination=pagination,
         )
+
+    @overload
+    def get_user_likes(self, user_uuid: UUID, pagination: PaginationParams) -> PaginatedResponse[Likes]: ...
+
+    @overload
+    def get_user_likes(self, user_uuid: UUID, pagination: None = ...) -> List[Likes]: ...
 
     def get_user_likes(
         self,

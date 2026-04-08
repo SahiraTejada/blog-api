@@ -38,7 +38,6 @@ class AppException(Exception):
     message: str = "An error occurred"
     code: ErrorCode = ErrorCode.INTERNAL_ERROR
     status_code: int = 500
-    details: Dict[str, Any] = {}
 
     def __init__(
         self,
@@ -62,8 +61,7 @@ class AppException(Exception):
             self.code = code
         if status_code is not None:
             self.status_code = status_code
-        if details is not None:
-            self.details = details
+        self.details = details if details is not None else {}
 
         # Pass message to Exception base class for pickle/copy compatibility
         super().__init__(self.message)

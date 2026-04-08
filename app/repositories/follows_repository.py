@@ -16,8 +16,9 @@ unfollows, deleted_at is set. When they re-follow, deleted_at is cleared.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, List, Optional, Union
+import logging
+from app.utils.dates import utc_now
+from typing import TYPE_CHECKING, List, Optional, Union, overload
 from uuid import UUID
 
 from sqlalchemy import and_, func
@@ -26,6 +27,8 @@ from sqlalchemy.orm import Session
 from app.models.follows import Follow
 from app.schemas.base import PaginationParams
 from app.utils.pagination import paginate
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from app.schemas.base import PaginatedResponse
@@ -72,31 +75,36 @@ class FollowRepository:
         Raises:
             IntegrityError: If either user UUID doesn't exist
         """
-        # Check if a soft-deleted follow exists
-        existing = self.db.query(Follow).filter(
-            and_(
-                Follow.follower_uuid == follower_uuid,
-                Follow.followee_uuid == followee_uuid,
+        try:
+            # Check if a soft-deleted follow exists
+            existing = self.db.query(Follow).filter(
+                and_(
+                    Follow.follower_uuid == follower_uuid,
+                    Follow.followee_uuid == followee_uuid,
+                )
+            ).first()
+
+            if existing:
+                # Restore soft-deleted follow
+                existing.deleted_at = None
+                existing.created_at = utc_now()
+                self.db.flush()
+                self.db.refresh(existing)
+                return existing
+
+            # Create new follow
+            follow = Follow(
+                follower_uuid=follower_uuid,
+                followee_uuid=followee_uuid,
             )
-        ).first()
-
-        if existing:
-            # Restore soft-deleted follow
-            existing.deleted_at = None
-            existing.created_at = datetime.now(timezone.utc)
+            self.db.add(follow)
             self.db.flush()
-            self.db.refresh(existing)
-            return existing
-
-        # Create new follow
-        follow = Follow(
-            follower_uuid=follower_uuid,
-            followee_uuid=followee_uuid,
-        )
-        self.db.add(follow)
-        self.db.flush()
-        self.db.refresh(follow)
-        return follow
+            self.db.refresh(follow)
+            return follow
+        except Exception as e:
+            self.db.rollback()
+            logger.error("Error creating follow (follower=%s, followee=%s): %s", follower_uuid, followee_uuid, e)
+            raise
 
     def unfollow(self, follower_uuid: UUID, followee_uuid: UUID) -> bool:
         """
@@ -111,20 +119,25 @@ class FollowRepository:
         Returns:
             True if the relationship was soft-deleted, False if it didn't exist
         """
-        follow = self.db.query(Follow).filter(
-            and_(
-                Follow.follower_uuid == follower_uuid,
-                Follow.followee_uuid == followee_uuid,
-                Follow.deleted_at.is_(None),
-            )
-        ).first()
+        try:
+            follow = self.db.query(Follow).filter(
+                and_(
+                    Follow.follower_uuid == follower_uuid,
+                    Follow.followee_uuid == followee_uuid,
+                    Follow.deleted_at.is_(None),
+                )
+            ).first()
 
-        if not follow:
-            return False
+            if not follow:
+                return False
 
-        follow.deleted_at = datetime.now(timezone.utc)
-        self.db.flush()
-        return True
+            follow.deleted_at = utc_now()
+            self.db.flush()
+            return True
+        except Exception as e:
+            self.db.rollback()
+            logger.error("Error unfollowing (follower=%s, followee=%s): %s", follower_uuid, followee_uuid, e)
+            raise
 
     # ========================================================================
     # READ OPERATIONS
@@ -150,6 +163,12 @@ class FollowRepository:
                 Follow.deleted_at.is_(None),
             )
         ).first() is not None
+
+    @overload
+    def get_followers(self, user_uuid: UUID, pagination: PaginationParams) -> PaginatedResponse[Follow]: ...
+
+    @overload
+    def get_followers(self, user_uuid: UUID, pagination: None = ...) -> List[Follow]: ...
 
     def get_followers(
         self,
@@ -179,6 +198,12 @@ class FollowRepository:
             return paginate(items, pagination, total_count)
 
         return query.all()
+
+    @overload
+    def get_following(self, user_uuid: UUID, pagination: PaginationParams) -> PaginatedResponse[Follow]: ...
+
+    @overload
+    def get_following(self, user_uuid: UUID, pagination: None = ...) -> List[Follow]: ...
 
     def get_following(
         self,

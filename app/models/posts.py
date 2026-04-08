@@ -81,13 +81,35 @@ class Post(BaseModel):
 
     @property
     def likes_count(self) -> int:
-        """Count active (non-soft-deleted) likes on this post."""
-        return sum(1 for like in self.likes if like.deleted_at is None)
+        """Count active likes using SQL COUNT instead of loading all objects."""
+        from sqlalchemy import func
+        from sqlalchemy.orm import object_session
+
+        from app.models.likes import Likes
+        session = object_session(self)
+        if session is None:
+            return 0
+        result = session.query(func.count()).filter(
+            Likes.post_uuid == self.uuid,
+            Likes.deleted_at.is_(None),
+        ).scalar()
+        return result or 0
 
     @property
     def comments_count(self) -> int:
-        """Count active (non-soft-deleted) comments on this post."""
-        return sum(1 for comment in self.comments if comment.deleted_at is None)
+        """Count active comments using SQL COUNT instead of loading all objects."""
+        from sqlalchemy import func
+        from sqlalchemy.orm import object_session
+
+        from app.models.comments import Comments as CommentsModel
+        session = object_session(self)
+        if session is None:
+            return 0
+        result = session.query(func.count()).filter(
+            CommentsModel.post_uuid == self.uuid,
+            CommentsModel.deleted_at.is_(None),
+        ).scalar()
+        return result or 0
 
     def __repr__(self) -> str:
         """Return string representation of the model."""

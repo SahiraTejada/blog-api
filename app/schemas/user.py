@@ -99,6 +99,14 @@ class UserUpdateSchema(UpdateSchema):
         """Validate username if provided using utility validator."""
         return validate_username(v, allow_none=True)
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: Optional[EmailStr]) -> Optional[EmailStr]:
+        """Normalize email to lowercase if provided."""
+        if v is not None:
+            return v.lower()  # type: ignore[return-value]
+        return v
+
 
 class UserListRequest(PaginationParams):
     """

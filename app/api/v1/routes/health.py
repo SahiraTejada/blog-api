@@ -1,4 +1,4 @@
-from datetime import datetime
+from app.utils.dates import utc_now
 
 from fastapi import APIRouter, status
 
@@ -16,7 +16,7 @@ async def health_check():
     return {
         "status": "healthy",
         "message": "API is running successfully",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now().isoformat(),
         "service": settings.PROJECT_NAME,
         "version": settings.APP_VERSION,
     }

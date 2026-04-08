@@ -1,4 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
+
+from app.utils.dates import utc_now
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -73,7 +75,7 @@ class TokenRepository(BaseRepository[Token]):
                 self.model.token == token,
                 self.model.revoked_at.is_(None),
                 self.model.deleted_at.is_(None),
-                self.model.expires_at > datetime.now(timezone.utc)
+                self.model.expires_at > utc_now()
             )
         )
 
@@ -197,7 +199,7 @@ class TokenRepository(BaseRepository[Token]):
         else:
             # Mark as revoked by setting revoked_at timestamp
             self.update(token_obj.uuid, {
-                "revoked_at": datetime.now(timezone.utc)
+                "revoked_at": utc_now()
             })
             return True
 
@@ -236,7 +238,7 @@ class TokenRepository(BaseRepository[Token]):
         )
 
         count = 0
-        now = datetime.now(timezone.utc)
+        now = utc_now()
 
         for token in tokens:
             # Skip the exception token (current session)
@@ -303,7 +305,7 @@ class TokenRepository(BaseRepository[Token]):
             deleted = token_repo.cleanup_expired()
             logger.info(f"Cleaned up {deleted} expired tokens")
         """
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=older_than_days)
+        cutoff_date = utc_now() - timedelta(days=older_than_days)
 
         # Find expired tokens
         expired_tokens = self.db.query(self.model).filter(
@@ -339,9 +341,7 @@ class TokenRepository(BaseRepository[Token]):
             # Monthly cleanup of old revoked tokens
             deleted = token_repo.cleanup_revoked(older_than_days=30)
         """
-        from datetime import timedelta
-
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=older_than_days)
+        cutoff_date = utc_now() - timedelta(days=older_than_days)
 
         revoked_tokens = self.db.query(self.model).filter(
             and_(

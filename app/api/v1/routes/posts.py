@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import AuthContext, require_user
 from app.database.session import get_db
-from app.schemas.base import PaginatedResponse, SuccessResponse
+from app.schemas.base import SuccessResponse
 from app.schemas.post import (
     PostCreateSchema,
     PostListRequest,
@@ -114,8 +114,6 @@ async def list_posts(
         author_uuid=filters.author_uuid,
     )
 
-    assert isinstance(result, PaginatedResponse)
-
     return PostListResponse(
         data=[PostResponse.model_validate(post) for post in result.data],
         pagination=result.pagination,
@@ -189,6 +187,7 @@ async def update_post(
     updated_post = post_service.update_post(
         post_uuid=post_uuid,
         update_data=update_data.model_dump(exclude_unset=True),
+        current_user=auth.user,
     )
 
     return PostResponse.model_validate(updated_post)
@@ -224,6 +223,9 @@ async def delete_post(
     """
     post_service = PostService(db)
 
-    post_service.delete_post(post_uuid)
+    post_service.delete_post(
+        post_uuid=post_uuid,
+        current_user=auth.user,
+    )
 
     return SuccessResponse(message="Post deleted successfully")

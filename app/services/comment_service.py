@@ -19,7 +19,7 @@ The CommentService handles:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, overload
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -29,8 +29,10 @@ from app.core.exceptions.comment import (
     CommentPostMismatchException,
     ParentCommentNotFoundException,
 )
+from app.core.exceptions.common import ForbiddenException
 from app.core.exceptions.post import PostNotFoundException
 from app.models.comments import Comments
+from app.models.users import User, UserRole
 from app.repositories.comment_repository import CommentRepository
 from app.repositories.post_repository import PostRepository
 from app.schemas.base import PaginationParams
@@ -136,6 +138,12 @@ class CommentService(BaseService[Comments]):
             raise CommentNotFoundException(identifier=str(comment_uuid))
         return comment
 
+    @overload
+    def get_comments_by_post(self, post_uuid: UUID, pagination: PaginationParams) -> PaginatedResponse[Comments]: ...
+
+    @overload
+    def get_comments_by_post(self, post_uuid: UUID, pagination: None = ...) -> List[Comments]: ...
+
     def get_comments_by_post(
         self,
         post_uuid: UUID,
@@ -185,6 +193,12 @@ class CommentService(BaseService[Comments]):
 
         return self.comment_repo.get_comment_tree(post_uuid)
 
+    @overload
+    def get_replies(self, comment_uuid: UUID, pagination: PaginationParams) -> PaginatedResponse[Comments]: ...
+
+    @overload
+    def get_replies(self, comment_uuid: UUID, pagination: None = ...) -> List[Comments]: ...
+
     def get_replies(
         self,
         comment_uuid: UUID,
@@ -211,6 +225,16 @@ class CommentService(BaseService[Comments]):
             parent_comment_uuid=comment_uuid,
             pagination=pagination,
         )
+
+    @overload
+    def get_comments_by_author(
+        self, author_uuid: UUID, pagination: PaginationParams,
+    ) -> PaginatedResponse[Comments]: ...
+
+    @overload
+    def get_comments_by_author(
+        self, author_uuid: UUID, pagination: None = ...,
+    ) -> List[Comments]: ...
 
     def get_comments_by_author(
         self,
@@ -280,6 +304,7 @@ class CommentService(BaseService[Comments]):
         self,
         comment_uuid: UUID,
         update_data: Dict[str, Any],
+        current_user: User,
     ) -> Comments:
         """
         Update a comment's content.
@@ -287,16 +312,21 @@ class CommentService(BaseService[Comments]):
         Args:
             comment_uuid: UUID of the comment to update
             update_data: Dictionary with fields to update (only 'content' allowed)
+            current_user: The authenticated user performing the action
 
         Returns:
             The updated comment model instance
 
         Raises:
             CommentNotFoundException: If comment does not exist
+            ForbiddenException: If user is not the author or admin
         """
         comment = self.comment_repo.get_by_uuid(comment_uuid)
         if not comment:
             raise CommentNotFoundException(identifier=str(comment_uuid))
+
+        if comment.author_uuid != current_user.uuid and current_user.role != UserRole.ADMIN:
+            raise ForbiddenException(message="Only the comment author or an admin can update this comment")
 
         updated_comment = self.comment_repo.update(comment_uuid, update_data)
         if not updated_comment:
@@ -308,16 +338,29 @@ class CommentService(BaseService[Comments]):
     # COMMENT DELETION
     # ========================================================================
 
-    def delete_comment(self, comment_uuid: UUID) -> None:
+    def delete_comment(
+        self,
+        comment_uuid: UUID,
+        current_user: User,
+    ) -> None:
         """
         Soft-delete a comment.
 
         Args:
             comment_uuid: UUID of the comment to delete
+            current_user: The authenticated user performing the action
 
         Raises:
             CommentNotFoundException: If comment does not exist
+            ForbiddenException: If user is not the author or admin
         """
+        comment = self.comment_repo.get_by_uuid(comment_uuid)
+        if not comment:
+            raise CommentNotFoundException(identifier=str(comment_uuid))
+
+        if comment.author_uuid != current_user.uuid and current_user.role != UserRole.ADMIN:
+            raise ForbiddenException(message="Only the comment author or an admin can delete this comment")
+
         deleted = self.comment_repo.delete(comment_uuid)
         if not deleted:
             raise CommentNotFoundException(identifier=str(comment_uuid))

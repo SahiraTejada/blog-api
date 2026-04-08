@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import AuthContext, require_user
 from app.database.session import get_db
-from app.schemas.base import PaginatedResponse, SuccessResponse
+from app.schemas.base import SuccessResponse
 from app.schemas.follows import (
     FollowCountResponse,
     FollowCreateSchema,
@@ -172,8 +172,6 @@ async def list_followers(
         pagination=pagination,
     )
 
-    assert isinstance(result, PaginatedResponse)
-
     return FollowListResponse(
         data=[
             FollowWithUserResponse(
@@ -214,8 +212,6 @@ async def list_following(
         user_uuid=user_uuid,
         pagination=pagination,
     )
-
-    assert isinstance(result, PaginatedResponse)
 
     return FollowListResponse(
         data=[

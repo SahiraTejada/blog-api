@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -17,6 +18,17 @@ class Settings(BaseSettings):
 
     # CORS
     ALLOWED_ORIGINS: list[str] = ["*"]
+
+    # Trusted hosts (separate from CORS origins)
+    ALLOWED_HOSTS: list[str] = ["*"]
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def validate_secret_key(cls, v: str) -> str:
+        """Ensure SECRET_KEY has minimum length for security."""
+        if len(v) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters long")
+        return v
 
     class Config:
         env_file = ".env"

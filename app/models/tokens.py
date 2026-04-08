@@ -1,5 +1,7 @@
 import enum
 from datetime import datetime, timezone
+
+from app.utils.dates import utc_now
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID as UUID_TYPE
 
@@ -85,7 +87,7 @@ class Token(BaseModel):
     @property
     def is_expired(self) -> bool:
         """Check if the token has expired."""
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         expires_at = self.expires_at
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
@@ -103,4 +105,4 @@ class Token(BaseModel):
 
     def revoke(self) -> None:
         """Revoke the token by setting the timestamp."""
-        self.revoked_at = datetime.now(timezone.utc)
+        self.revoked_at = utc_now()

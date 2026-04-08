@@ -13,7 +13,9 @@
       "Bash(python -m mypy:*)",
       "Bash(python -m py_compile:*)",
       "Bash(wc:*)",
-      "Bash(echo No PDF library found:*)"
+      "Bash(echo No PDF library found:*)",
+      "Bash(find /c/Users/sahir/Desktop/Cosas/blog-api/blog-api/tests -type f -name *.py)",
+      "Bash(find /c/Users/sahir/Desktop/Cosas/blog-api/blog-api -type d -not -path */.*)"
     ],
     "deny": [],
     "ask": []
