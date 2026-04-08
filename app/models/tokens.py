@@ -1,7 +1,5 @@
 import enum
 from datetime import datetime, timezone
-
-from app.utils.dates import utc_now
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID as UUID_TYPE
 
@@ -10,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
+from app.utils.dates import utc_now
 
 if TYPE_CHECKING:
     from app.models.users import User

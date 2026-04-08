@@ -17,7 +17,6 @@ unlikes, deleted_at is set. When they re-like, deleted_at is cleared.
 from __future__ import annotations
 
 import logging
-from app.utils.dates import utc_now
 from typing import TYPE_CHECKING, List, Optional, Union, overload
 from uuid import UUID
 
@@ -26,6 +25,7 @@ from sqlalchemy.orm import Session
 
 from app.models.likes import Likes
 from app.schemas.base import PaginationParams
+from app.utils.dates import utc_now
 from app.utils.pagination import paginate
 
 logger = logging.getLogger(__name__)

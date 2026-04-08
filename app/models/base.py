@@ -1,6 +1,4 @@
 from datetime import datetime
-
-from app.utils.dates import utc_now
 from typing import Optional, TypeVar
 from uuid import UUID as UUID_TYPE
 from uuid import uuid4
@@ -10,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.connection import Base
+from app.utils.dates import utc_now
 
 
 class BaseModel(Base):

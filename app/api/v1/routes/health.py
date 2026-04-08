@@ -1,8 +1,7 @@
-from app.utils.dates import utc_now
-
 from fastapi import APIRouter, status
 
 from app.core.config import settings
+from app.utils.dates import utc_now
 
 router = APIRouter(prefix="/health", tags=["Health"])
 

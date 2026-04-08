@@ -1,6 +1,4 @@
 from datetime import datetime
-
-from app.utils.dates import utc_now
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID as UUID_TYPE
 
@@ -9,6 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.connection import Base
+from app.utils.dates import utc_now
 
 if TYPE_CHECKING:
     from app.models.posts import Post
