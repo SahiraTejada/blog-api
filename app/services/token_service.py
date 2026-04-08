@@ -762,7 +762,6 @@ class TokenService(BaseService[Token]):
     def cleanup_expired_tokens(
         self,
         older_than_days: int = 7,
-        hard_delete: bool = True
     ) -> int:
         """
         Delete expired tokens from the database.
@@ -772,7 +771,6 @@ class TokenService(BaseService[Token]):
 
         Args:
             older_than_days: Only delete tokens expired for X days
-            hard_delete: If True, permanently delete. If False, soft delete
 
         Returns:
             int: Number of tokens deleted
@@ -783,14 +781,12 @@ class TokenService(BaseService[Token]):
             logger.info(f"Cleaned up {deleted} expired tokens")
         """
         return self.token_repo.cleanup_expired(
-            hard_delete=hard_delete,
             older_than_days=older_than_days
         )
 
     def cleanup_revoked_tokens(
         self,
         older_than_days: int = 30,
-        hard_delete: bool = True
     ) -> int:
         """
         Delete revoked tokens from the database.
@@ -800,7 +796,6 @@ class TokenService(BaseService[Token]):
 
         Args:
             older_than_days: Only delete tokens revoked X days ago
-            hard_delete: If True, permanently delete. If False, soft delete
 
         Returns:
             int: Number of tokens deleted
@@ -811,7 +806,6 @@ class TokenService(BaseService[Token]):
             logger.info(f"Cleaned up {deleted} revoked tokens")
         """
         return self.token_repo.cleanup_revoked(
-            hard_delete=hard_delete,
             older_than_days=older_than_days
         )
 
