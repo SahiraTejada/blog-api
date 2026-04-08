@@ -17,7 +17,6 @@ unlikes, deleted_at is set. When they re-like, deleted_at is cleared.
 from __future__ import annotations
 
 import logging
-from app.utils.dates import utc_now
 from typing import TYPE_CHECKING, Dict, List, Optional, Union, overload
 from uuid import UUID
 
