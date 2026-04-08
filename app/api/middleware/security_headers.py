@@ -7,6 +7,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Middleware that adds security headers to all responses."""
 
     async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
+        """Add security headers to all responses."""
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
