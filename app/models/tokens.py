@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
+from app.utils.dates import utc_now
 
 if TYPE_CHECKING:
     from app.models.users import User
@@ -85,7 +86,7 @@ class Token(BaseModel):
     @property
     def is_expired(self) -> bool:
         """Check if the token has expired."""
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         expires_at = self.expires_at
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
@@ -103,4 +104,4 @@ class Token(BaseModel):
 
     def revoke(self) -> None:
         """Revoke the token by setting the timestamp."""
-        self.revoked_at = datetime.now(timezone.utc)
+        self.revoked_at = utc_now()

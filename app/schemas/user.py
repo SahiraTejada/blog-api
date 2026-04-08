@@ -7,7 +7,19 @@ from app.schemas.base import PaginatedResponse, PaginationMeta, PaginationParams
 from app.utils.validator_utils import validate_username
 
 
-class UserBaseSchema(ResponseSchema):
+class FullNameMixin:
+    """Mixin that provides a computed full_name property."""
+
+    first_name: str
+    last_name: str
+
+    @property
+    def full_name(self) -> str:
+        """Compute full name from first and last name."""
+        return f"{self.first_name} {self.last_name}"
+
+
+class UserBaseSchema(FullNameMixin, ResponseSchema):
     """
     Base schema for user information.
 
@@ -26,16 +38,6 @@ class UserBaseSchema(ResponseSchema):
     first_name: str = Field(description="User's first name", json_schema_extra={"example": "John"})
     last_name: str = Field(description="User's last name", json_schema_extra={"example": "Doe"})
     role: UserRole = Field(description="User's role")
-
-    @property
-    def full_name(self) -> str:
-        """
-        Compute full name from first and last name.
-
-        Returns:
-            Full name as "First Last"
-        """
-        return f"{self.first_name} {self.last_name}"
 
     model_config = {
         "json_schema_extra": {
@@ -99,6 +101,14 @@ class UserUpdateSchema(UpdateSchema):
         """Validate username if provided using utility validator."""
         return validate_username(v, allow_none=True)
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: Optional[str]) -> Optional[str]:
+        """Normalize email to lowercase if provided."""
+        if v is not None:
+            return v.lower()
+        return v
+
 
 class UserListRequest(PaginationParams):
     """
@@ -132,7 +142,7 @@ class UserListResponse(PaginatedResponse[UserBaseSchema]):
     pagination: PaginationMeta = Field(description="Pagination metadata")
 
 
-class UserPublicSchema(ResponseSchema):
+class UserPublicSchema(FullNameMixin, ResponseSchema):
     """
     Schema for public user profile information.
 
@@ -161,8 +171,3 @@ class UserPublicSchema(ResponseSchema):
     username: str = Field(description="User's username", json_schema_extra={"example": "johndoe"})
     first_name: str = Field(description="User's first name", json_schema_extra={"example": "John"})
     last_name: str = Field(description="User's last name", json_schema_extra={"example": "Doe"})
-
-    @property
-    def full_name(self) -> str:
-        """Compute full name from first and last name."""
-        return f"{self.first_name} {self.last_name}"

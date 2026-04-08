@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID as UUID_TYPE
 
@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.connection import Base
+from app.utils.dates import utc_now
 
 if TYPE_CHECKING:
     from app.models.users import User
@@ -42,7 +43,7 @@ class Follow(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=utc_now,
         nullable=False
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(
@@ -76,4 +77,4 @@ class Follow(Base):
 
     def __repr__(self) -> str:
         """Return string representation of the model."""
-        return f"<{self.__class__.__name__}(follower_uuid={self.follower_uuid},followee_uuid={self.followee_uuid}>"
+        return f"<{self.__class__.__name__}(follower_uuid={self.follower_uuid},followee_uuid={self.followee_uuid})>"

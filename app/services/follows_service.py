@@ -17,7 +17,7 @@ The FollowService handles:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union, overload
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -136,6 +136,12 @@ class FollowService:
         """
         return self.follow_repo.is_following(follower_uuid, followee_uuid)
 
+    @overload
+    def get_followers(self, user_uuid: UUID, pagination: PaginationParams) -> PaginatedResponse[Follow]: ...
+
+    @overload
+    def get_followers(self, user_uuid: UUID, pagination: None = ...) -> List[Follow]: ...
+
     def get_followers(
         self,
         user_uuid: UUID,
@@ -162,6 +168,12 @@ class FollowService:
             user_uuid=user_uuid,
             pagination=pagination,
         )
+
+    @overload
+    def get_following(self, user_uuid: UUID, pagination: PaginationParams) -> PaginatedResponse[Follow]: ...
+
+    @overload
+    def get_following(self, user_uuid: UUID, pagination: None = ...) -> List[Follow]: ...
 
     def get_following(
         self,

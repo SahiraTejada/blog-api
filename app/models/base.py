@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, TypeVar
 from uuid import UUID as UUID_TYPE
 from uuid import uuid4
@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.connection import Base
+from app.utils.dates import utc_now
 
 
 class BaseModel(Base):
@@ -28,13 +29,13 @@ class BaseModel(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=utc_now,
         nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=utc_now,
+        onupdate=utc_now,
         nullable=False
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(

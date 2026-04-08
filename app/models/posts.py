@@ -79,16 +79,6 @@ class Post(BaseModel):
         back_populates="posts"
     )
 
-    @property
-    def likes_count(self) -> int:
-        """Count active (non-soft-deleted) likes on this post."""
-        return sum(1 for like in self.likes if like.deleted_at is None)
-
-    @property
-    def comments_count(self) -> int:
-        """Count active (non-soft-deleted) comments on this post."""
-        return sum(1 for comment in self.comments if comment.deleted_at is None)
-
     def __repr__(self) -> str:
         """Return string representation of the model."""
         return f"<{self.__class__.__name__}(title={self.title},status={self.status.value})>"

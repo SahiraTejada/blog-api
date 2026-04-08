@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID as UUID_TYPE
 
@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.connection import Base
+from app.utils.dates import utc_now
 
 if TYPE_CHECKING:
     from app.models.posts import Post
@@ -37,7 +38,7 @@ class Likes(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=utc_now,
         nullable=False
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(
@@ -53,10 +54,12 @@ class Likes(Base):
     # Relationships
     user: Mapped["User"] = relationship(
         "User",
+        foreign_keys=[user_uuid],
         back_populates="likes"
     )
     post: Mapped["Post"] = relationship(
         "Post",
+        foreign_keys=[post_uuid],
         back_populates="likes"
     )
 

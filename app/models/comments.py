@@ -56,12 +56,17 @@ class Comments(BaseModel):
         back_populates="comments"
     )
 
-    # Self-referential relationship for nested comments
+    # Self-referential relationships for nested comments
+    parent: Mapped[Optional["Comments"]] = relationship(
+        "Comments",
+        remote_side="Comments.uuid",
+        foreign_keys=[parent_comment_uuid],
+        back_populates="replies",
+    )
     replies: Mapped[List["Comments"]] = relationship(
         "Comments",
-        backref="parent",
-        remote_side="Comments.uuid",
-        foreign_keys=[parent_comment_uuid]
+        foreign_keys=[parent_comment_uuid],
+        back_populates="parent",
     )
 
     def __repr__(self) -> str:

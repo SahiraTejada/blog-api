@@ -16,8 +16,8 @@ unlikes, deleted_at is set. When they re-like, deleted_at is cleared.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, List, Optional, Union
+import logging
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, overload
 from uuid import UUID
 
 from sqlalchemy import and_, func
@@ -25,7 +25,10 @@ from sqlalchemy.orm import Session
 
 from app.models.likes import Likes
 from app.schemas.base import PaginationParams
+from app.utils.dates import utc_now
 from app.utils.pagination import paginate
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from app.schemas.base import PaginatedResponse
@@ -69,31 +72,36 @@ class LikesRepository:
         Returns:
             The created or restored Likes instance
         """
-        # Check if a soft-deleted like exists
-        existing = self.db.query(Likes).filter(
-            and_(
-                Likes.user_uuid == user_uuid,
-                Likes.post_uuid == post_uuid,
+        try:
+            # Check if a soft-deleted like exists
+            existing = self.db.query(Likes).filter(
+                and_(
+                    Likes.user_uuid == user_uuid,
+                    Likes.post_uuid == post_uuid,
+                )
+            ).first()
+
+            if existing:
+                # Restore soft-deleted like
+                existing.deleted_at = None
+                existing.created_at = utc_now()
+                self.db.flush()
+                self.db.refresh(existing)
+                return existing
+
+            # Create new like
+            like = Likes(
+                user_uuid=user_uuid,
+                post_uuid=post_uuid,
             )
-        ).first()
-
-        if existing:
-            # Restore soft-deleted like
-            existing.deleted_at = None
-            existing.created_at = datetime.now(timezone.utc)
+            self.db.add(like)
             self.db.flush()
-            self.db.refresh(existing)
-            return existing
-
-        # Create new like
-        like = Likes(
-            user_uuid=user_uuid,
-            post_uuid=post_uuid,
-        )
-        self.db.add(like)
-        self.db.flush()
-        self.db.refresh(like)
-        return like
+            self.db.refresh(like)
+            return like
+        except Exception as e:
+            self.db.rollback()
+            logger.error("Error creating like (user=%s, post=%s): %s", user_uuid, post_uuid, e)
+            raise
 
     def unlike(self, user_uuid: UUID, post_uuid: UUID) -> bool:
         """
@@ -106,20 +114,25 @@ class LikesRepository:
         Returns:
             True if the like was soft-deleted, False if it didn't exist
         """
-        like = self.db.query(Likes).filter(
-            and_(
-                Likes.user_uuid == user_uuid,
-                Likes.post_uuid == post_uuid,
-                Likes.deleted_at.is_(None),
-            )
-        ).first()
+        try:
+            like = self.db.query(Likes).filter(
+                and_(
+                    Likes.user_uuid == user_uuid,
+                    Likes.post_uuid == post_uuid,
+                    Likes.deleted_at.is_(None),
+                )
+            ).first()
 
-        if not like:
-            return False
+            if not like:
+                return False
 
-        like.deleted_at = datetime.now(timezone.utc)
-        self.db.flush()
-        return True
+            like.deleted_at = utc_now()
+            self.db.flush()
+            return True
+        except Exception as e:
+            self.db.rollback()
+            logger.error("Error unliking (user=%s, post=%s): %s", user_uuid, post_uuid, e)
+            raise
 
     # ========================================================================
     # READ OPERATIONS
@@ -143,6 +156,12 @@ class LikesRepository:
                 Likes.deleted_at.is_(None),
             )
         ).first() is not None
+
+    @overload
+    def get_post_likes(self, post_uuid: UUID, pagination: PaginationParams) -> PaginatedResponse[Likes]: ...
+
+    @overload
+    def get_post_likes(self, post_uuid: UUID, pagination: None = ...) -> List[Likes]: ...
 
     def get_post_likes(
         self,
@@ -172,6 +191,12 @@ class LikesRepository:
             return paginate(items, pagination, total_count)
 
         return query.all()
+
+    @overload
+    def get_user_likes(self, user_uuid: UUID, pagination: PaginationParams) -> PaginatedResponse[Likes]: ...
+
+    @overload
+    def get_user_likes(self, user_uuid: UUID, pagination: None = ...) -> List[Likes]: ...
 
     def get_user_likes(
         self,
@@ -222,6 +247,32 @@ class LikesRepository:
                 Likes.deleted_at.is_(None),
             )
         ).scalar() or 0
+
+    def count_post_likes_batch(self, post_uuids: List[UUID]) -> Dict[UUID, int]:
+        """
+        Count active likes for multiple posts in a single query.
+
+        Args:
+            post_uuids: List of post UUIDs
+
+        Returns:
+            Dictionary mapping post_uuid to like count
+        """
+        if not post_uuids:
+            return {}
+
+        rows = self.db.query(
+            Likes.post_uuid,
+            func.count().label("cnt"),
+        ).filter(
+            and_(
+                Likes.post_uuid.in_(post_uuids),
+                Likes.deleted_at.is_(None),
+            )
+        ).group_by(Likes.post_uuid).all()
+
+        counts = {row[0]: row[1] for row in rows}
+        return {uuid: counts.get(uuid, 0) for uuid in post_uuids}
 
     def count_user_likes(self, user_uuid: UUID) -> int:
         """

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, overload
 from uuid import UUID
 
 from sqlalchemy import func
@@ -29,6 +29,18 @@ class PostRepository(BaseRepository[Post]):
     # ========================================================================
     # POST-SPECIFIC READ METHODS
     # ========================================================================
+
+    @overload
+    def get_by_author_uuid(
+        self, author_uuid: UUID, status: Optional[PostStatus] = ...,
+        include_deleted: bool = ..., pagination: PaginationParams = ...,
+    ) -> PaginatedResponse[Post]: ...
+
+    @overload
+    def get_by_author_uuid(
+        self, author_uuid: UUID, status: Optional[PostStatus] = ...,
+        include_deleted: bool = ..., pagination: None = ...,
+    ) -> List[Post]: ...
 
     def get_by_author_uuid(
         self,
@@ -98,6 +110,20 @@ class PostRepository(BaseRepository[Post]):
     # SEARCH METHODS (use BaseRepository methods)
     # ========================================================================
 
+    @overload
+    def get_posts(
+        self, include_deleted: bool = ..., pagination: PaginationParams = ...,
+        status: Optional[PostStatus] = ..., search_term: Optional[str] = ...,
+        category_uuid: Optional[UUID] = ..., author_uuid: Optional[UUID] = ...,
+    ) -> PaginatedResponse[Post]: ...
+
+    @overload
+    def get_posts(
+        self, include_deleted: bool = ..., pagination: None = ...,
+        status: Optional[PostStatus] = ..., search_term: Optional[str] = ...,
+        category_uuid: Optional[UUID] = ..., author_uuid: Optional[UUID] = ...,
+    ) -> List[Post]: ...
+
     def get_posts(
         self,
         include_deleted: bool = False,
@@ -157,7 +183,12 @@ class PostRepository(BaseRepository[Post]):
         search_fields = ["title", "content"] if search_term else None
 
         if category_uuid:
-            base_query = self.db.query(self.model).join(self.model.categories).filter(Category.uuid == category_uuid)
+            base_query = (
+                self.db.query(self.model)
+                .join(self.model.categories)
+                .filter(Category.uuid == category_uuid)
+                .distinct()
+            )
 
         return self.get_multi(
             search_fields=search_fields,

@@ -23,7 +23,7 @@ Security Considerations:
     - Suspicious token detection based on IP changes
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -40,6 +40,7 @@ from app.core.exceptions import (
 from app.models.tokens import Token, TokenType
 from app.repositories.token_repository import TokenRepository
 from app.services.base_service import BaseService
+from app.utils.dates import utc_now
 
 
 class TokenService(BaseService[Token]):
@@ -124,14 +125,14 @@ class TokenService(BaseService[Token]):
             create_refresh_token() to create and store tokens.
         """
         # Calculate expiration time in UTC
-        expires_at = datetime.now(timezone.utc) + expires_delta
+        expires_at = utc_now() + expires_delta
 
-        # Build the JWT payload with standard claims
+        # Build the JWT payload with standard claims (RFC 7519 NumericDate)
         payload: Dict[str, Any] = {
-            "sub": str(user_uuid),          # Subject: user identifier
-            "type": token_type.value,        # Token type for validation
-            "exp": expires_at,               # Expiration time
-            "iat": datetime.now(timezone.utc)  # Issued at time
+            "sub": str(user_uuid),                  # Subject: user identifier
+            "type": token_type.value,                # Token type for validation
+            "exp": int(expires_at.timestamp()),      # Expiration time (Unix timestamp)
+            "iat": int(utc_now().timestamp()),       # Issued at time (Unix timestamp)
         }
 
         # Encode the JWT using the secret key and algorithm from settings
@@ -761,7 +762,6 @@ class TokenService(BaseService[Token]):
     def cleanup_expired_tokens(
         self,
         older_than_days: int = 7,
-        hard_delete: bool = True
     ) -> int:
         """
         Delete expired tokens from the database.
@@ -771,7 +771,6 @@ class TokenService(BaseService[Token]):
 
         Args:
             older_than_days: Only delete tokens expired for X days
-            hard_delete: If True, permanently delete. If False, soft delete
 
         Returns:
             int: Number of tokens deleted
@@ -782,14 +781,12 @@ class TokenService(BaseService[Token]):
             logger.info(f"Cleaned up {deleted} expired tokens")
         """
         return self.token_repo.cleanup_expired(
-            hard_delete=hard_delete,
             older_than_days=older_than_days
         )
 
     def cleanup_revoked_tokens(
         self,
         older_than_days: int = 30,
-        hard_delete: bool = True
     ) -> int:
         """
         Delete revoked tokens from the database.
@@ -799,7 +796,6 @@ class TokenService(BaseService[Token]):
 
         Args:
             older_than_days: Only delete tokens revoked X days ago
-            hard_delete: If True, permanently delete. If False, soft delete
 
         Returns:
             int: Number of tokens deleted
@@ -810,7 +806,6 @@ class TokenService(BaseService[Token]):
             logger.info(f"Cleaned up {deleted} revoked tokens")
         """
         return self.token_repo.cleanup_revoked(
-            hard_delete=hard_delete,
             older_than_days=older_than_days
         )
 

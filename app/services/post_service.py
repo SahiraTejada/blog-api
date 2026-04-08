@@ -19,13 +19,16 @@ The PostService handles:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, overload
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.exceptions.common import ForbiddenException
 from app.core.exceptions.post import PostNameExistsException, PostNotFoundException
 from app.models.posts import Post, PostStatus
+from app.models.users import User, UserRole
+from app.repositories.category_repository import CategoryRepository
 from app.repositories.post_repository import PostRepository
 from app.schemas.base import PaginationParams
 from app.services.base_service import BaseService
@@ -162,7 +165,7 @@ class PostService(BaseService[Post]):
         search_term: Optional[str] = None,
         category_uuid: Optional[UUID] = None,
         author_uuid: Optional[UUID] = None,
-    ) -> Union[List[Post], PaginatedResponse[Post]]:
+    ) -> PaginatedResponse[Post]:
         """
         Get posts with flexible filtering options and pagination.
 
@@ -183,6 +186,16 @@ class PostService(BaseService[Post]):
             category_uuid=category_uuid,
             author_uuid=author_uuid,
         )
+
+    @overload
+    def get_posts_by_author(
+        self, author_uuid: UUID, status: Optional[PostStatus] = ..., pagination: PaginationParams = ...,
+    ) -> PaginatedResponse[Post]: ...
+
+    @overload
+    def get_posts_by_author(
+        self, author_uuid: UUID, status: Optional[PostStatus] = ..., pagination: None = ...,
+    ) -> List[Post]: ...
 
     def get_posts_by_author(
         self,
@@ -267,13 +280,19 @@ class PostService(BaseService[Post]):
     # POST UPDATE
     # ========================================================================
 
-    def update_post(self, post_uuid: UUID, update_data: Dict[str, Any]) -> Post:
+    def update_post(
+        self,
+        post_uuid: UUID,
+        update_data: Dict[str, Any],
+        current_user: User,
+    ) -> Post:
         """
         Update post information.
 
         Args:
             post_uuid: UUID of the post to update
             update_data: Dictionary of fields to update (e.g., title, content, status)
+            current_user: The authenticated user performing the action
 
         Returns:
             Post: The updated post model instance
@@ -281,11 +300,15 @@ class PostService(BaseService[Post]):
         Raises:
             PostNotFoundException: If post with given UUID does not exist
             PostNameExistsException: If new title already exists
+            ForbiddenException: If user is not the author or admin
         """
         post = self.post_repo.get_by_uuid(post_uuid)
 
         if not post:
             raise PostNotFoundException()
+
+        if post.author_uuid != current_user.uuid and current_user.role != UserRole.ADMIN:
+            raise ForbiddenException(message="Only the post author or an admin can update this post")
 
         new_title = update_data.get("title")
         if new_title and new_title != post.title:
@@ -352,16 +375,30 @@ class PostService(BaseService[Post]):
     # POST DELETION
     # ========================================================================
 
-    def delete_post(self, post_uuid: UUID) -> None:
+    def delete_post(
+        self,
+        post_uuid: UUID,
+        current_user: User,
+    ) -> None:
         """
         Soft-delete a post.
 
         Args:
             post_uuid: UUID of the post to delete
+            current_user: The authenticated user performing the action
 
         Raises:
             PostNotFoundException: If post with given UUID does not exist
+            ForbiddenException: If user is not the author or admin
         """
+        post = self.post_repo.get_by_uuid(post_uuid)
+
+        if not post:
+            raise PostNotFoundException()
+
+        if post.author_uuid != current_user.uuid and current_user.role != UserRole.ADMIN:
+            raise ForbiddenException(message="Only the post author or an admin can delete this post")
+
         deleted = self.post_repo.delete(post_uuid)
 
         if not deleted:
@@ -381,8 +418,6 @@ class PostService(BaseService[Post]):
             post: The post model instance
             category_uuids: List of category UUIDs to assign
         """
-        from app.repositories.category_repository import CategoryRepository
-
         category_repo = CategoryRepository(self.post_repo.db)
         categories = []
 
