@@ -28,6 +28,7 @@ from app.core.exceptions.common import ForbiddenException
 from app.core.exceptions.post import PostNameExistsException, PostNotFoundException
 from app.models.posts import Post, PostStatus
 from app.models.users import User, UserRole
+from app.repositories.category_repository import CategoryRepository
 from app.repositories.post_repository import PostRepository
 from app.schemas.base import PaginationParams
 from app.services.base_service import BaseService
@@ -417,8 +418,6 @@ class PostService(BaseService[Post]):
             post: The post model instance
             category_uuids: List of category UUIDs to assign
         """
-        from app.repositories.category_repository import CategoryRepository
-
         category_repo = CategoryRepository(self.post_repo.db)
         categories = []
 

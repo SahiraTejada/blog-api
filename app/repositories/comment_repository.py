@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, overload
 from uuid import UUID
 
+from sqlalchemy import and_, func, literal
 from sqlalchemy.orm import Session
 
 from app.models.comments import Comments
@@ -206,8 +207,6 @@ class CommentRepository(BaseRepository[Comments]):
         if not post_uuids:
             return {}
 
-        from sqlalchemy import and_, func
-
         rows = self.db.query(
             Comments.post_uuid,
             func.count().label("cnt"),
@@ -262,8 +261,6 @@ class CommentRepository(BaseRepository[Comments]):
         Returns:
             The nesting depth (0-based)
         """
-        from sqlalchemy import func, literal
-
         # Base case: the target comment at depth 0
         base = (
             self.db.query(

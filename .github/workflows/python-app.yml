@@ -62,7 +62,39 @@ jobs:
         git diff --quiet || (git add -A && git commit -m "style: auto-format code [skip ci]")
         git push || echo "No changes to push"
 
-    # Step 7: Lint code with Flake8 + bugbear
+    # Step 7: Check no imports inside functions
+    - name: Check imports are at module level
+      run: |
+        python -c "
+        import ast, os, sys
+        errors = []
+        for root, dirs, files in os.walk('app'):
+            dirs[:] = [d for d in dirs if d != '__pycache__']
+            for f in files:
+                if not f.endswith('.py'):
+                    continue
+                path = os.path.join(root, f)
+                with open(path) as fh:
+                    try:
+                        tree = ast.parse(fh.read())
+                    except SyntaxError:
+                        continue
+                for node in ast.walk(tree):
+                    if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        continue
+                    for child in ast.walk(node):
+                        if isinstance(child, (ast.Import, ast.ImportFrom)):
+                            mod = child.module if isinstance(child, ast.ImportFrom) else ', '.join(a.name for a in child.names)
+                            errors.append(f'{path}:{child.lineno} in {node.name}() -> {mod}')
+        if errors:
+            print('ERROR: Imports found inside functions (move them to the top of the file):')
+            for e in errors:
+                print(f'  {e}')
+            sys.exit(1)
+        print('OK: All imports are at module level')
+        "
+
+    # Step 8: Lint code with Flake8 + bugbear
     - name: Run Flake8 (linting)
       run: |
         pip install flake8 flake8-bugbear flake8-docstrings  # Install flake8 + bugbear + docstrings
